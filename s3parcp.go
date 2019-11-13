@@ -25,7 +25,7 @@ var opts struct {
 func main() {
 	_, err := flags.ParseArgs(&opts, os.Args[1:])
 	if err != nil {
-		panic(err)
+		os.Exit(2)
 	}
 
 	url, err := url.Parse(opts.Positional.S3Path)
