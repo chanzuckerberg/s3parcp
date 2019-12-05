@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"hash/crc32"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"runtime"
@@ -12,10 +15,24 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
+// CRC32CChecksum computes the crc32c checksum of a file
+func CRC32CChecksum(filename string) (uint32, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return 0, err
+	}
+
+	// This ensures that we use the crc32c system command if available
+	//   I stepped though the code to verify
+	crc32q := crc32.MakeTable(crc32.Castagnoli)
+	return crc32.Checksum(data, crc32q), nil
+}
+
 var opts struct {
-	PartSize    int64 `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
-	Concurrency int   `short:"c" long:"concurrency" description:"Download concurrency"`
-	BufferSize  int   `short:"b" long:"buffer-size" description:"Size of download buffer"`
+	PartSize    int64  `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
+	Concurrency int    `short:"c" long:"concurrency" description:"Download concurrency"`
+	BufferSize  int    `short:"b" long:"buffer-size" description:"Size of download buffer"`
+	Checksum    uint32 `long:"checksum" description:"crc32c checksum to verify"`
 	Positional  struct {
 		S3Path string `required:"yes"`
 		Dest   string `required:"yes"`
@@ -73,5 +90,17 @@ func main() {
 	})
 	if err != nil {
 		panic(err)
+	}
+
+	if opts.Checksum != 0 {
+		checksum, err := CRC32CChecksum(opts.Positional.Dest)
+		if err != nil {
+			panic(err)
+		}
+
+		if checksum != opts.Checksum {
+			fmt.Println("Checksum failed")
+			os.Exit(1)
+		}
 	}
 }
