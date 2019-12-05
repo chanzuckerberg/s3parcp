@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"runtime"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,13 +30,14 @@ func CRC32CChecksum(filename string) (uint32, error) {
 }
 
 var opts struct {
-	PartSize    int64  `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
-	Concurrency int    `short:"c" long:"concurrency" description:"Download concurrency"`
-	BufferSize  int    `short:"b" long:"buffer-size" description:"Size of download buffer"`
-	Checksum    uint32 `long:"checksum" description:"crc32c checksum to verify"`
-	Positional  struct {
-		S3Path string `required:"yes"`
-		Dest   string `required:"yes"`
+	PartSize        int64  `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
+	Concurrency     int    `short:"c" long:"concurrency" description:"Download concurrency"`
+	BufferSize      int    `short:"b" long:"buffer-size" description:"Size of download buffer"`
+	Checksum        uint32 `long:"checksum" description:"hex crc32c checksum to verify" base:"16"`
+	ComputeChecksum bool   `long:"compute-checksum" description:"Compute crc32c checksum on src instead of copying (Only local files supported currently)"`
+	Positional      struct {
+		Src  string `required:"yes"`
+		Dest string `description:"Destination to download to (Optional, defaults to source file name)"`
 	} `positional-args:"yes"`
 }
 
@@ -45,9 +47,26 @@ func main() {
 		os.Exit(2)
 	}
 
-	url, err := url.Parse(opts.Positional.S3Path)
+	Src := opts.Positional.Src
+
+	if opts.ComputeChecksum {
+		checksum, err := CRC32CChecksum(Src)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("crc32c checksum: %X\n", checksum)
+		os.Exit(0)
+	}
+
+	// This is down here because checksum is only supported locally at the moment and other sources can only be s3
+	url, err := url.Parse(Src)
 	Bucket := url.Host
-	Path := url.Path
+	Key := url.Path[1:]
+
+	Dest := opts.Positional.Dest
+	if Dest == "" {
+		Dest = path.Base(Key)
+	}
 
 	PartSize := opts.PartSize
 	if PartSize == 0 {
@@ -78,7 +97,7 @@ func main() {
 	})
 
 	// Create a file to write the S3 Object contents to.
-	f, err := os.Create(opts.Positional.Dest)
+	f, err := os.Create(Dest)
 	if err != nil {
 		panic(err)
 	}
@@ -86,14 +105,14 @@ func main() {
 	// Write the contents of S3 Object to the file
 	_, err = downloader.Download(f, &s3.GetObjectInput{
 		Bucket: aws.String(Bucket),
-		Key:    aws.String(Path),
+		Key:    aws.String(Key),
 	})
 	if err != nil {
 		panic(err)
 	}
 
 	if opts.Checksum != 0 {
-		checksum, err := CRC32CChecksum(opts.Positional.Dest)
+		checksum, err := CRC32CChecksum(Dest)
 		if err != nil {
 			panic(err)
 		}
