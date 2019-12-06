@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"hash/crc32"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -16,67 +15,75 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
-// CRC32CChecksum computes the crc32c checksum of a file
-func CRC32CChecksum(filename string) (uint32, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return 0, err
-	}
-
-	// This ensures that we use the crc32c system command if available
-	//   I stepped though the code to verify
-	crc32q := crc32.MakeTable(crc32.Castagnoli)
-	return crc32.Checksum(data, crc32q), nil
+func illegalArgsCrash(message string) {
+	os.Stderr.WriteString(fmt.Sprintf("%s\n", message))
+	os.Exit(2)
 }
 
 var opts struct {
-	PartSize        int64  `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
-	Concurrency     int    `short:"c" long:"concurrency" description:"Download concurrency"`
-	BufferSize      int    `short:"b" long:"buffer-size" description:"Size of download buffer"`
-	Checksum        uint32 `long:"checksum" description:"hex crc32c checksum to verify" base:"16"`
-	ComputeChecksum bool   `long:"compute-checksum" description:"Compute crc32c checksum on src instead of copying (Only local files supported currently)"`
-	Positional      struct {
-		Src  string `required:"yes"`
-		Dest string `description:"Destination to download to (Optional, defaults to source file name)"`
+	PartSize     int64 `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
+	Concurrency  int   `short:"c" long:"concurrency" description:"Download concurrency"`
+	BufferSize   int   `short:"b" long:"buffer-size" description:"Size of download buffer"`
+	Checksum     bool  `long:"checksum" description:"Should compare checksum when downloading"`
+	ChecksumOnly bool  `long:"checksum-only" description:"Instead of uploading a local file, add it's checksum to an s3 destination's metadata"`
+	Positional   struct {
+		Source      string `required:"yes"`
+		Destination string `description:"Destination to download to (Optional, defaults to source file name)"`
 	} `positional-args:"yes"`
 }
 
-func main() {
-	_, err := flags.ParseArgs(&opts, os.Args[1:])
+func checksumOnly(destinationURL *url.URL) {
+	destinationBucket := destinationURL.Host
+	destinationKey := destinationURL.Path[1:]
+
+	crc32cChecksum, err := CRC32CChecksum(opts.Positional.Source)
 	if err != nil {
-		os.Exit(2)
+		os.Stderr.WriteString("Error computing crc32c checksum")
+		panic(err)
 	}
 
-	Src := opts.Positional.Src
+	err = WriteCRC32CChecksumMetadata(destinationBucket, destinationKey, crc32cChecksum)
+	if err != nil {
+		os.Stderr.WriteString("Error writing crc32c checksum to s3 object metadata")
+		panic(err)
+	}
+}
 
-	if opts.ComputeChecksum {
-		checksum, err := CRC32CChecksum(Src)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("crc32c checksum: %X\n", checksum)
-		os.Exit(0)
+func localToLocal() {
+	bytes, err := ioutil.ReadFile(opts.Positional.Source)
+	if err != nil {
+		panic(err)
+	}
+	ioutil.WriteFile(opts.Positional.Destination, bytes, 0644)
+}
+
+func compareChecksum(bucket string, key string, file string) {
+	expectedCRC32CChecksum, err := GetCRC32CChecksum(bucket, key)
+	if err != nil {
+		os.Stderr.WriteString("Encountered error while fetching crc32c checksum\n")
+		panic(err)
 	}
 
-	// This is down here because checksum is only supported locally at the moment and other sources can only be s3
-	url, err := url.Parse(Src)
-	Bucket := url.Host
-	Key := url.Path[1:]
-
-	Dest := opts.Positional.Dest
-	if Dest == "" {
-		Dest = path.Base(Key)
+	if expectedCRC32CChecksum == 0 {
+		os.Stderr.WriteString("crc32c checksum not found in s3 object's metadata, try writing one with --checksum-only\n")
+		os.Exit(1)
 	}
 
-	PartSize := opts.PartSize
-	if PartSize == 0 {
-		PartSize = int64(os.Getpagesize()) * 1024
+	crc32cChecksum, err := CRC32CChecksum(key)
+	if err != nil {
+		os.Stderr.WriteString("Encountered error while computing crc32c checksum\n")
+		panic(err)
 	}
 
-	Concurrency := opts.Concurrency
-	if Concurrency == 0 {
-		Concurrency = runtime.NumCPU()
+	if crc32cChecksum != expectedCRC32CChecksum {
+		os.Stderr.WriteString("Checksums do not match\n")
+		os.Exit(1)
 	}
+}
+
+func download(sourceURL *url.URL) {
+	sourceBucket := sourceURL.Host
+	sourceKey := sourceURL.Path[1:]
 
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
@@ -88,8 +95,8 @@ func main() {
 	})
 
 	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
-		d.PartSize = PartSize
-		d.Concurrency = Concurrency
+		d.PartSize = opts.PartSize
+		d.Concurrency = opts.Concurrency
 		d.S3 = client
 		if opts.BufferSize > 0 {
 			d.BufferProvider = s3manager.NewPooledBufferedWriterReadFromProvider(opts.BufferSize)
@@ -97,29 +104,57 @@ func main() {
 	})
 
 	// Create a file to write the S3 Object contents to.
-	f, err := os.Create(Dest)
+	f, err := os.Create(opts.Positional.Destination)
 	if err != nil {
 		panic(err)
 	}
 
 	// Write the contents of S3 Object to the file
 	_, err = downloader.Download(f, &s3.GetObjectInput{
-		Bucket: aws.String(Bucket),
-		Key:    aws.String(Key),
+		Bucket: aws.String(sourceBucket),
+		Key:    aws.String(sourceKey),
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	if opts.Checksum != 0 {
-		checksum, err := CRC32CChecksum(Dest)
-		if err != nil {
-			panic(err)
-		}
+	if opts.Checksum {
+		compareChecksum(sourceBucket, sourceKey, opts.Positional.Destination)
+	}
+}
 
-		if checksum != opts.Checksum {
-			fmt.Println("Checksum failed")
-			os.Exit(1)
-		}
+func main() {
+	_, err := flags.ParseArgs(&opts, os.Args[1:])
+	if err != nil {
+		os.Exit(2)
+	}
+
+	if opts.PartSize == 0 {
+		opts.PartSize = int64(os.Getpagesize()) * 1024
+	}
+
+	if opts.Concurrency == 0 {
+		opts.Concurrency = runtime.NumCPU()
+	}
+
+	// This is down here because checksum is only supported locally at the moment and other sources can only be s3
+	sourceURL, err := url.Parse(opts.Positional.Source)
+	if opts.Positional.Destination == "" {
+		opts.Positional.Destination = path.Base(sourceURL.Path)
+	}
+	destinationURL, err := url.Parse(opts.Positional.Destination)
+
+	if sourceURL.Scheme != "s3" && destinationURL.Scheme == "s3" && opts.ChecksumOnly {
+		checksumOnly(destinationURL)
+	} else if sourceURL.Scheme != "s3" && destinationURL.Scheme == "s3" {
+		illegalArgsCrash("Uploading not yet supported")
+	} else if opts.ChecksumOnly {
+		illegalArgsCrash("checksum-only requires a local source and an s3 destination")
+	} else if sourceURL.Scheme == "s3" && destinationURL.Scheme == "s3" {
+		illegalArgsCrash("S3 to S3 copying not yet supported")
+	} else if sourceURL.Scheme != "s3" && destinationURL.Scheme != "s3" {
+		localToLocal()
+	} else {
+		download(sourceURL)
 	}
 }
