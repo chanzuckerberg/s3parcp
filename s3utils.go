@@ -12,6 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
+// This capitalization is critical to the implementation please do not change it
+//	if you write metadata with different capitalization s3 will fuse it with
+//  the existing value of the same name instead of overwriting.
 const crc32cChecksumMetadataName = "Crc32c-Checksum"
 
 // AddS3Metadata adds metadata to existing s3 object
@@ -153,6 +156,7 @@ func WriteCRC32CChecksumMetadata(bucket string, key string, crc32cChecksum uint3
 	return AddS3Metadata(bucket, key, metadata)
 }
 
+// GetCRC32CChecksum gets the crc32c checksum from the metadata of an s3 object
 func GetCRC32CChecksum(bucket string, key string) (uint32, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
