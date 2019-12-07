@@ -25,28 +25,22 @@ var opts struct {
 	Concurrency  int   `short:"c" long:"concurrency" description:"Download concurrency"`
 	BufferSize   int   `short:"b" long:"buffer-size" description:"Size of download buffer"`
 	Checksum     bool  `long:"checksum" description:"Should compare checksum when downloading"`
-	ChecksumOnly bool  `long:"checksum-only" description:"Instead of uploading a local file, add it's checksum to an s3 destination's metadata"`
+	ChecksumOnly bool  `long:"checksum-only" description:"Print the local file's checksum (requires no destination)"`
 	Positional   struct {
 		Source      string `required:"yes"`
 		Destination string `description:"Destination to download to (Optional, defaults to source file name)"`
 	} `positional-args:"yes"`
 }
 
-func checksumOnly(destinationURL *url.URL) {
-	destinationBucket := destinationURL.Host
-	destinationKey := destinationURL.Path[1:]
-
+func checksumOnly() {
 	crc32cChecksum, err := CRC32CChecksum(opts.Positional.Source)
 	if err != nil {
 		os.Stderr.WriteString("Error computing crc32c checksum")
 		panic(err)
 	}
 
-	err = WriteCRC32CChecksumMetadata(destinationBucket, destinationKey, crc32cChecksum)
-	if err != nil {
-		os.Stderr.WriteString("Error writing crc32c checksum to s3 object metadata")
-		panic(err)
-	}
+	fmt.Printf("crc32c checksum: %X\n", crc32cChecksum)
+	os.Exit(0)
 }
 
 func localToLocal() {
@@ -139,17 +133,20 @@ func main() {
 
 	// This is down here because checksum is only supported locally at the moment and other sources can only be s3
 	sourceURL, err := url.Parse(opts.Positional.Source)
+
+	if opts.ChecksumOnly && sourceURL.Scheme != "s3" && opts.Positional.Destination == "" {
+		checksumOnly()
+	} else if opts.ChecksumOnly {
+		illegalArgsCrash("checksum-only requires a local source and no destination")
+	}
+
 	if opts.Positional.Destination == "" {
 		opts.Positional.Destination = path.Base(sourceURL.Path)
 	}
 	destinationURL, err := url.Parse(opts.Positional.Destination)
 
-	if sourceURL.Scheme != "s3" && destinationURL.Scheme == "s3" && opts.ChecksumOnly {
-		checksumOnly(destinationURL)
-	} else if sourceURL.Scheme != "s3" && destinationURL.Scheme == "s3" {
+	if sourceURL.Scheme != "s3" && destinationURL.Scheme == "s3" {
 		illegalArgsCrash("Uploading not yet supported")
-	} else if opts.ChecksumOnly {
-		illegalArgsCrash("checksum-only requires a local source and an s3 destination")
 	} else if sourceURL.Scheme == "s3" && destinationURL.Scheme == "s3" {
 		illegalArgsCrash("S3 to S3 copying not yet supported")
 	} else if sourceURL.Scheme != "s3" && destinationURL.Scheme != "s3" {
