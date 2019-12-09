@@ -118,13 +118,6 @@ func upload(destinationURL *url.URL) {
 		DisableSSL: &disableSSL,
 	})
 
-	client.UploadPartCopy(&s3.UploadPartCopyInput{
-		Bucket:          aws.String(destinationBucket),
-		Key:             aws.String(destinationKey),
-		CopySource:      aws.String("asdasd"),
-		CopySourceRange: aws.String("as"),
-	})
-
 	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
 		u.PartSize = opts.PartSize
 		u.Concurrency = opts.Concurrency
