@@ -51,7 +51,7 @@ func compareChecksum(bucket string, key string, file string) {
 		os.Exit(1)
 	}
 
-	crc32cChecksum, err := CRC32CChecksum(key)
+	crc32cChecksum, err := CRC32CChecksum(file)
 	if err != nil {
 		os.Stderr.WriteString("Encountered error while computing crc32c checksum\n")
 		panic(err)
@@ -116,6 +116,13 @@ func upload(destinationURL *url.URL) {
 	disableSSL := true
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
+	})
+
+	client.UploadPartCopy(&s3.UploadPartCopyInput{
+		Bucket:          aws.String(destinationBucket),
+		Key:             aws.String(destinationKey),
+		CopySource:      aws.String("asdasd"),
+		CopySourceRange: aws.String("as"),
 	})
 
 	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
