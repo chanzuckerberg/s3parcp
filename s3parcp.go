@@ -51,7 +51,7 @@ func compareChecksum(bucket string, key string, file string) {
 		os.Exit(1)
 	}
 
-	crc32cChecksum, err := CRC32CChecksum(key)
+	crc32cChecksum, err := CRC32CChecksum(file)
 	if err != nil {
 		os.Stderr.WriteString("Encountered error while computing crc32c checksum\n")
 		panic(err)
