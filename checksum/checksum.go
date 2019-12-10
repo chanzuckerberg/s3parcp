@@ -1,4 +1,4 @@
-package main
+package checksum
 
 import (
 	"hash/crc32"
