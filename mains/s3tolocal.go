@@ -49,9 +49,24 @@ func S3ToLocal(opts options.Options) {
 		Key:    aws.String(sourceKey),
 	})
 
-	contentLength := *headObjectOutput.ContentLength
-
-	f, _ := mmap.CreateFile(opts.Positional.Destination, contentLength)
+	type file interface {
+		WriteAt(p []byte, off int64) (n int, err error)
+		Close() error
+	}
+	var f file
+	if opts.MMap {
+		contentLength := *headObjectOutput.ContentLength
+		f, err = mmap.CreateFile(opts.Positional.Destination, contentLength)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		// Create a file to write the S3 Object contents to.
+		f, err := os.Create(opts.Positional.Destination)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	// Write the contents of S3 Object to the file
 	_, err = downloader.Download(f, &s3.GetObjectInput{
@@ -62,9 +77,9 @@ func S3ToLocal(opts options.Options) {
 		panic(err)
 	}
 
-	if opts.Checksum {
-		s3utils.CompareChecksum(headObjectOutput, f.Data)
-	}
-
 	f.Close()
+
+	if opts.Checksum {
+		s3utils.CompareChecksum(headObjectOutput, opts.Positional.Destination)
+	}
 }

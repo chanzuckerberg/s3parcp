@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"s3parcp/checksum"
+	"s3parcp/mmap"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -37,7 +38,14 @@ func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
 }
 
 // CompareChecksum compares an s3 object's checksum from metadata with a file's checksum
-func CompareChecksum(headObjectOutput *s3.HeadObjectOutput, data []byte) {
+func CompareChecksum(headObjectOutput *s3.HeadObjectOutput, filename string) {
+	f, err := mmap.OpenFile(filename)
+	if err != nil {
+		panic(err)
+	}
+
+	data := f.Data
+
 	expectedCRC32CChecksum, err := GetCRC32CChecksum(headObjectOutput)
 	if err != nil {
 		os.Stderr.WriteString("Encountered error while fetching crc32c checksum\n")
