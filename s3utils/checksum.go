@@ -6,7 +6,6 @@ import (
 	"s3parcp/checksum"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -17,21 +16,12 @@ import (
 const Crc32cChecksumMetadataName = "Crc32c-Checksum"
 
 // GetCRC32CChecksum gets the crc32c checksum from the metadata of an s3 object
-func GetCRC32CChecksum(client *s3.S3, bucket string, key string) (uint32, error) {
-	headObjectResponse, err := client.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	})
-	if err != nil {
-		os.Stderr.WriteString("Error fetching head object for fetching crc32c checksum\n")
-		return 0, err
-	}
-
-	if headObjectResponse.Metadata == nil {
+func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
+	if headObjectOutput.Metadata == nil {
 		return 0, nil
 	}
 
-	crc32cChecksumString := *headObjectResponse.Metadata[Crc32cChecksumMetadataName]
+	crc32cChecksumString := *headObjectOutput.Metadata[Crc32cChecksumMetadataName]
 
 	if crc32cChecksumString == "" {
 		return 0, nil
@@ -47,19 +37,19 @@ func GetCRC32CChecksum(client *s3.S3, bucket string, key string) (uint32, error)
 }
 
 // CompareChecksum compares an s3 object's checksum from metadata with a file's checksum
-func CompareChecksum(client *s3.S3, bucket string, key string, file string) {
-	expectedCRC32CChecksum, err := GetCRC32CChecksum(client, bucket, key)
+func CompareChecksum(headObjectOutput *s3.HeadObjectOutput, data []byte) {
+	expectedCRC32CChecksum, err := GetCRC32CChecksum(headObjectOutput)
 	if err != nil {
 		os.Stderr.WriteString("Encountered error while fetching crc32c checksum\n")
 		panic(err)
 	}
 
 	if expectedCRC32CChecksum == 0 {
-		os.Stderr.WriteString("crc32c checksum not found in s3 object's metadata, try writing one with --checksum-only\n")
+		os.Stderr.WriteString("crc32c checksum not found in s3 object's metadata, try re-uploading with --checksum\n")
 		os.Exit(1)
 	}
 
-	crc32cChecksum, err := checksum.CRC32CChecksum(file)
+	crc32cChecksum, err := checksum.CRC32CChecksum(data)
 	if err != nil {
 		os.Stderr.WriteString("Encountered error while computing crc32c checksum\n")
 		panic(err)

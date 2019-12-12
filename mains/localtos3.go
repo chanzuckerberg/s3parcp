@@ -2,6 +2,7 @@ package mains
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"s3parcp/checksum"
 	"s3parcp/options"
@@ -46,7 +47,11 @@ func LocalToS3(opts options.Options) {
 
 	metadata := make(map[string]*string)
 	if opts.Checksum {
-		crc32cChecksum, err := checksum.CRC32CChecksum(opts.Positional.Source)
+		data, err := ioutil.ReadFile(opts.Positional.Source)
+		if err != nil {
+			panic(err)
+		}
+		crc32cChecksum, err := checksum.CRC32CChecksum(data)
 		if err != nil {
 			os.Stderr.WriteString("Error computing crc32c checksum of source file\n")
 			panic(err)

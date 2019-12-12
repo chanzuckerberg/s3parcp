@@ -3,6 +3,7 @@ package mains
 import (
 	"fmt"
 	"os"
+	"s3parcp/mmap"
 	"s3parcp/options"
 	"s3parcp/s3utils"
 
@@ -43,11 +44,14 @@ func S3ToLocal(opts options.Options) {
 		}
 	})
 
-	// Create a file to write the S3 Object contents to.
-	f, err := os.Create(opts.Positional.Destination)
-	if err != nil {
-		panic(err)
-	}
+	headObjectOutput, _ := client.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(sourceBucket),
+		Key:    aws.String(sourceKey),
+	})
+
+	contentLength := *headObjectOutput.ContentLength
+
+	f, _ := mmap.CreateFile(opts.Positional.Destination, contentLength)
 
 	// Write the contents of S3 Object to the file
 	_, err = downloader.Download(f, &s3.GetObjectInput{
@@ -59,6 +63,8 @@ func S3ToLocal(opts options.Options) {
 	}
 
 	if opts.Checksum {
-		s3utils.CompareChecksum(client, sourceBucket, sourceKey, opts.Positional.Destination)
+		s3utils.CompareChecksum(headObjectOutput, f.Data)
 	}
+
+	f.Close()
 }
