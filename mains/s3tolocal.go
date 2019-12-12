@@ -62,7 +62,7 @@ func S3ToLocal(opts options.Options) {
 		}
 	} else {
 		// Create a file to write the S3 Object contents to.
-		f, err := os.Create(opts.Positional.Destination)
+		f, err = os.Create(opts.Positional.Destination)
 		if err != nil {
 			panic(err)
 		}
