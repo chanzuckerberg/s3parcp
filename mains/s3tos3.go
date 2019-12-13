@@ -2,7 +2,8 @@ package mains
 
 import (
 	"os"
-	"s3parcp/options"
+
+	"github.com/chanzuckerberg/s3parcp/options"
 )
 
 // S3ToS3 is the main method for copying s3 objects to s3 objects
