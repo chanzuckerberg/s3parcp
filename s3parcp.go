@@ -1,9 +1,9 @@
 package main
 
 import (
-	"s3parcp/mains"
-	"s3parcp/options"
-	"s3parcp/s3utils"
+	"github.com/chanzuckerberg/s3parcp/mains"
+	"github.com/chanzuckerberg/s3parcp/options"
+	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
 func main() {

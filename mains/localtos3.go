@@ -3,9 +3,10 @@ package mains
 import (
 	"fmt"
 	"os"
-	"s3parcp/checksum"
-	"s3parcp/options"
-	"s3parcp/s3utils"
+
+	"github.com/chanzuckerberg/s3parcp/checksum"
+	"github.com/chanzuckerberg/s3parcp/options"
+	"github.com/chanzuckerberg/s3parcp/s3utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"

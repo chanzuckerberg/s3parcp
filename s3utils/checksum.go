@@ -3,7 +3,7 @@ package s3utils
 import (
 	"fmt"
 	"os"
-	"s3parcp/checksum"
+	"github.com/chanzuckerberg/s3parcp/checksum"
 	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
