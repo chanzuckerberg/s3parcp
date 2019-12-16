@@ -1,0 +1,17 @@
+dist: bionic
+language: go
+go:
+  - "1.13.1"
+install:
+  - make setup
+jobs:
+  include:
+    - name: lint
+      stage: check
+      script: make lint-ci
+    - name: test
+      stage: check
+      script:
+        - make test
+      after_success:
+        - bash <(curl -s https://codecov.io/bash)
