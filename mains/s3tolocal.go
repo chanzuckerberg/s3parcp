@@ -80,6 +80,6 @@ func S3ToLocal(opts options.Options) {
 	f.Close()
 
 	if opts.Checksum {
-		s3utils.CompareChecksum(headObjectOutput, opts.Positional.Destination)
+		s3utils.CompareChecksum(headObjectOutput, opts.Positional.Destination, opts)
 	}
 }
