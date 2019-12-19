@@ -4,6 +4,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/vimeo/go-util/crc32combine"
 	"golang.org/x/exp/mmap"
@@ -17,29 +18,53 @@ func CRC32CChecksum(data []byte) (uint32, error) {
 	return crc32.Checksum(data, crc32q), nil
 }
 
-type chunkRange struct {
+type partRange struct {
 	Chunk int64
 	Start int64
 	End   int64
 }
 
-type chunkChecksum struct {
+type partChecksum struct {
 	Chunk    int64
 	Checksum uint32
 	Error    error
 }
 
-func checksumWorker(readerAt *io.ReaderAt, chunkRanges <-chan chunkRange, checksums chan<- chunkChecksum) {
-	for chunkRange := range chunkRanges {
-		data := make([]byte, chunkRange.End-chunkRange.Start)
-		(*readerAt).ReadAt(data, chunkRange.Start)
+func checksumWorker(readerAt *io.ReaderAt, partRanges <-chan partRange, checksums chan<- partChecksum) {
+	for partRange := range partRanges {
+		data := make([]byte, partRange.End-partRange.Start)
+		(*readerAt).ReadAt(data, partRange.Start)
 		checksum, err := CRC32CChecksum(data)
-		checksums <- chunkChecksum{
-			Chunk:    chunkRange.Chunk,
+		checksums <- partChecksum{
+			Chunk:    partRange.Chunk,
 			Checksum: checksum,
 			Error:    err,
 		}
 	}
+}
+
+func parallelCRCFuse(checksums *[]uint32, numParts, partSize, length, lastPartSize int64) uint32 {
+	nextPower := numParts << 1
+	for n := int64(1); n < nextPower; n <<= 1 {
+		var wg sync.WaitGroup
+
+		for i := int64(0); i+n < numParts; i += 2 * n {
+			wg.Add(1)
+			go func(i int64) {
+				len2 := partSize * n
+				prevLen := (i + n) * partSize
+				if len2+prevLen > length {
+					len2 = length - prevLen
+				} else if i+n == numParts-n {
+					len2 -= (partSize - lastPartSize)
+				}
+				(*checksums)[i] = crc32combine.CRC32Combine(crc32.Castagnoli, (*checksums)[i], (*checksums)[i+n], len2)
+				wg.Done()
+			}(i)
+		}
+		wg.Wait()
+	}
+	return (*checksums)[0]
 }
 
 // ParallelCRC32CChecksum a
@@ -60,53 +85,47 @@ func ParallelCRC32CChecksum(filename string, partSize int64, concurrency int, us
 		return 0, err
 	}
 
-	chunks := length / partSize
-	lastChunkSize := length % partSize
-	if lastChunkSize > 0 {
-		chunks++
+	numParts := length / partSize
+	lastPartSize := length % partSize
+	if lastPartSize > 0 {
+		numParts++
 	} else {
-		lastChunkSize = partSize
+		lastPartSize = partSize
 	}
 
-	chunkRanges := make(chan chunkRange, chunks)
-	chunkChecksums := make(chan chunkChecksum, chunks)
-	checksums := make([]uint32, chunks)
+	partRanges := make(chan partRange, numParts)
+	partChecksums := make(chan partChecksum, numParts)
+	checksums := make([]uint32, numParts)
 
 	for w := 0; w < concurrency; w++ {
-		go checksumWorker(&readerAt, chunkRanges, chunkChecksums)
+		go checksumWorker(&readerAt, partRanges, partChecksums)
 	}
 
-	for i := int64(0); i < chunks-1; i++ {
-		chunkRanges <- chunkRange{
+	for i := int64(0); i < numParts-1; i++ {
+		partRanges <- partRange{
 			Chunk: i,
 			Start: i * partSize,
 			End:   (i + 1) * partSize,
 		}
 	}
 
-	chunkRanges <- chunkRange{
-		Chunk: chunks - 1,
-		Start: (chunks - 1) * partSize,
+	partRanges <- partRange{
+		Chunk: numParts - 1,
+		Start: (numParts - 1) * partSize,
 		End:   length,
 	}
 
-	close(chunkRanges)
+	close(partRanges)
 
-	for i := int64(0); i < chunks; i++ {
-		chunkChecksum := <-chunkChecksums
-		if chunkChecksum.Error != nil {
-			return 0, chunkChecksum.Error
+	for i := int64(0); i < numParts; i++ {
+		partChecksum := <-partChecksums
+		if partChecksum.Error != nil {
+			return 0, partChecksum.Error
 		}
-		checksums[chunkChecksum.Chunk] = chunkChecksum.Checksum
+		checksums[partChecksum.Chunk] = partChecksum.Checksum
 	}
 
-	checksum := checksums[0]
-
-	for i := int64(1); i < chunks-1; i++ {
-		checksum = crc32combine.CRC32Combine(crc32.Castagnoli, checksum, checksums[i], partSize)
-	}
-
-	checksum = crc32combine.CRC32Combine(crc32.Castagnoli, checksum, checksums[chunks-1], lastChunkSize)
+	checksum := parallelCRCFuse(&checksums, numParts, partSize, length, lastPartSize)
 
 	return checksum, nil
 }
