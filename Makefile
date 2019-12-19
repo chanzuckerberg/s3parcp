@@ -76,7 +76,7 @@ test-coverage:  ## run the test with proper coverage reporting
 	go tool cover -html=coverage.out
 .PHONY: test-coverage
 
-install: ## install the fogg binary in $GOPATH/bin
+install: ## install the binary in $GOPATH/bin
 	go install ${LDFLAGS} .
 .PHONY: install
 
@@ -85,7 +85,7 @@ help: ## display help for this makefile
 .PHONY: help
 
 clean: ## clean the repo
-	rm fogg 2>/dev/null || true
+	rm s3parcp 2>/dev/null || true
 	go clean
 	go clean -testcache
 	rm -rf dist 2>/dev/null || true
