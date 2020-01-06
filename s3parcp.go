@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/chanzuckerberg/s3parcp/mains"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
 func main() {
+	before := time.Now()
 	opts := options.ParseArgs()
 	sourceIsS3 := s3utils.IsS3Path(opts.Positional.Source)
 	destinationIsS3 := s3utils.IsS3Path(opts.Positional.Destination)
@@ -19,5 +23,9 @@ func main() {
 		mains.LocalToS3(opts)
 	} else {
 		mains.LocalToLocal(opts)
+	}
+	duration := time.Since(before)
+	if opts.Duration {
+		fmt.Println(duration.Seconds())
 	}
 }

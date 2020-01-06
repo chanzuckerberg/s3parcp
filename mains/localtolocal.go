@@ -2,6 +2,7 @@ package mains
 
 import (
 	"io/ioutil"
+
 	"github.com/chanzuckerberg/s3parcp/options"
 )
 

@@ -2,7 +2,10 @@ package mains
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+
+	"github.com/chanzuckerberg/s3parcp/mmap"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 
@@ -29,9 +32,15 @@ func S3ToLocal(opts options.Options) {
 		),
 	)
 
+	httpClient := &http.Client{
+		Timeout: 15e9,
+	}
 	disableSSL := true
+	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
+		HTTPClient: httpClient,
+		MaxRetries: &maxRetries,
 	})
 
 	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
@@ -43,10 +52,28 @@ func S3ToLocal(opts options.Options) {
 		}
 	})
 
-	// Create a file to write the S3 Object contents to.
-	f, err := os.Create(opts.Positional.Destination)
-	if err != nil {
-		panic(err)
+	headObjectOutput, _ := client.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(sourceBucket),
+		Key:    aws.String(sourceKey),
+	})
+
+	type file interface {
+		WriteAt(p []byte, off int64) (n int, err error)
+		Close() error
+	}
+	var f file
+	if opts.MMap {
+		contentLength := *headObjectOutput.ContentLength
+		f, err = mmap.CreateFile(opts.Positional.Destination, contentLength)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		// Create a file to write the S3 Object contents to.
+		f, err = os.Create(opts.Positional.Destination)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// Write the contents of S3 Object to the file
@@ -58,7 +85,9 @@ func S3ToLocal(opts options.Options) {
 		panic(err)
 	}
 
+	f.Close()
+
 	if opts.Checksum {
-		s3utils.CompareChecksum(client, sourceBucket, sourceKey, opts.Positional.Destination)
+		s3utils.CompareChecksum(headObjectOutput, opts.Positional.Destination, opts)
 	}
 }
