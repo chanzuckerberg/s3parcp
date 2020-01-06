@@ -2,6 +2,7 @@ package mains
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"s3parcp/mmap"
 	"s3parcp/options"
@@ -30,9 +31,15 @@ func S3ToLocal(opts options.Options) {
 		),
 	)
 
+	httpClient := &http.Client{
+		Timeout: 15e9,
+	}
 	disableSSL := true
+	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
+		HTTPClient: httpClient,
+		MaxRetries: &maxRetries,
 	})
 
 	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
