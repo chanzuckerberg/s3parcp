@@ -3,9 +3,11 @@ package s3utils
 import (
 	"fmt"
 	"os"
-	"s3parcp/checksum"
-	"s3parcp/options"
+
 	"strconv"
+
+	"github.com/chanzuckerberg/s3parcp/checksum"
+	"github.com/chanzuckerberg/s3parcp/options"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 )

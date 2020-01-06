@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"s3parcp/mmap"
-	"s3parcp/options"
-	"s3parcp/s3utils"
+
+	"github.com/chanzuckerberg/s3parcp/mmap"
+	"github.com/chanzuckerberg/s3parcp/options"
+	"github.com/chanzuckerberg/s3parcp/s3utils"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"

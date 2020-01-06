@@ -2,7 +2,8 @@ package mains
 
 import (
 	"io/ioutil"
-	"s3parcp/options"
+
+	"github.com/chanzuckerberg/s3parcp/options"
 )
 
 // LocalToLocal is the main method for copying local files to local files

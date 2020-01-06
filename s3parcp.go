@@ -1,11 +1,17 @@
 package main
 
 import (
+<<<<<<< HEAD
 	"fmt"
 	"s3parcp/mains"
 	"s3parcp/options"
 	"s3parcp/s3utils"
 	"time"
+=======
+	"github.com/chanzuckerberg/s3parcp/mains"
+	"github.com/chanzuckerberg/s3parcp/options"
+	"github.com/chanzuckerberg/s3parcp/s3utils"
+>>>>>>> origin/master
 )
 
 func main() {
