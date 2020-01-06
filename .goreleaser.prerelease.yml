@@ -4,7 +4,7 @@ before:
     - make packr
 
 builds:
-  - binary: fogg
+  - binary: s3parcp
     env:
       - CGO_ENABLED=0
     goos:
@@ -14,7 +14,7 @@ builds:
     goarch:
       - amd64
     ldflags:
-      - "-w -s -X github.com/chanzuckerberg/fogg/util.GitSha={{.Commit}} -X github.com/chanzuckerberg/fogg/util.Version={{.Version}} -X github.com/chanzuckerberg/fogg/util.Dirty=false -X github.com/chanzuckerberg/fogg/util.Release=true"
+      - "-w -s -X github.com/chanzuckerberg/s3parcp/util.GitSha={{.Commit}} -X github.com/chanzuckerberg/s3parcp/util.Version={{.Version}} -X github.com/chanzuckerberg/s3parcp/util.Dirty=false -X github.com/chanzuckerberg/s3parcp/util.Release=true"
 
 archives:
   - files:
@@ -28,7 +28,7 @@ release:
 dockers:
   - dockerfile: Dockerfile
     image_templates:
-      - docker.pkg.github.com/chanzuckerberg/fogg/fogg:{{.ShortCommit}}
+      - docker.pkg.github.com/chanzuckerberg/s3parcp/s3parcp:{{.ShortCommit}}
     extra_files:
       - cmd
       - go.mod
