@@ -1,7 +1,6 @@
 before:
   hooks:
     - make clean
-    - make packr
 
 builds:
   - binary: s3parcp
@@ -23,35 +22,5 @@ archives:
 release:
   prerelease: false
 
-brews:
-  - description: "Terraform without pain."
-    github:
-      owner: chanzuckerberg
-      name: homebrew-tap
-    homepage: "https://github.com/chanzuckerberg/s3parcp"
-    test: system "#{bin}/s3parcp version"
-
-dockers:
-  - dockerfile: Dockerfile
-    image_templates:
-      - docker.pkg.github.com/chanzuckerberg/s3parcp/s3parcp:v{{.Version}}
-    extra_files:
-      - cmd
-      - go.mod
-      - go.sum
-      - main.go
-      - vendor
-      - apply
-      - config
-      - docs
-      - errs
-      - exp
-      - init
-      - migrations
-      - plan
-      - plugins
-      - setup
-      - templates
-      - util
 env_files:
   github_token: ~/.config/goreleaser/github_token
