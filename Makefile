@@ -34,11 +34,9 @@ release: ## run a release
 	goreleaser release
 .PHONY: release
 
-release-prerelease: build ## release to github as a 'pre-release'
-	version=`./s3parcp version`; \
-	git tag v"$$version"; \
+release-prerelease:
+	./bin/bff bump
 	git push
-	git push --tags
 	./bin/goreleaser release -f .goreleaser.prerelease.yml --debug
 .PHONY: release-prelease
 
