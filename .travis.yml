@@ -8,10 +8,12 @@ jobs:
   include:
     - name: lint
       stage: check
-      script: make lint-ci
+      script:
+        - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+        - ./bin/golangci-lint run
+
     - name: test
       stage: check
-      script:
-        - make test
+      script: go test -cover ./...
       after_success:
         - bash <(curl -s https://codecov.io/bash)
