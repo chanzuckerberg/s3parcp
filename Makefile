@@ -8,36 +8,20 @@ lint: ## run linter
 	./bin/golangci-lint run
 .PHONY: lint
 
-release: ## run a release
-	./bin/goreleaser release
-.PHONY: release
-
-release-snapshot: ## run a release
-	./bin/goreleaser release --snapshot
-.PHONY: release-snapshot
-
 build:
 	go build
 .PHONY: build
 
-deps:
+deps: ## install dependencies
 	go mod tidy
 .PHONY: deps
 
-coverage: ## run the go coverage tool, reading file coverage.out
-	go tool cover -html=coverage.out
-.PHONY: coverage
-
 test: deps ## run tests
-	go test -cover ./...
+	go test ./...
 .PHONY: test
 
-test-ci: ## run tests
-	goverage -coverprofile=coverage.out -covermode=atomic ./...
-.PHONY: test-ci
-
-test-coverage:  ## run the test with proper coverage reporting
-	goverage -coverprofile=coverage.out -covermode=atomic ./...
+test-coverage: ## run tests and generate coverage report
+	go test -coverprofile=coverage.out -covermode=atomic ./...
 	go tool cover -html=coverage.out
 .PHONY: test-coverage
 

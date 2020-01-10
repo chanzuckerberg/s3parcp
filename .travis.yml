@@ -8,13 +8,22 @@ jobs:
   include:
     - name: lint
       stage: check
-      script:
-        - ./bin/golangci-lint run
+      script: ./bin/golangci-lint run
+
+    - name: vet
+      stage: check
+      script: go vet ./...
+
+    - name: format
+      stage: check
+      script: test -z $(gofmt -l .)
 
     - name: test
       stage: check
-      script:
-        - go test -coverprofile=coverage.out -covermode=atomic ./...
-        - go tool cover -html=coverage.out
-      after_success:
-        - bash <(curl -s https://codecov.io/bash)
+      script: go test ./...
+
+    - name: deploy
+      stage: deploy
+      script: curl -sL https://git.io/goreleaser | bash
+      on:
+        tags: true
