@@ -25,5 +25,4 @@ jobs:
     - name: deploy
       stage: deploy
       script: curl -sL https://git.io/goreleaser | bash
-      on:
-        tags: true
+      if: tag =~ /^v
