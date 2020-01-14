@@ -1,7 +1,7 @@
 export GO111MODULE=on
 
 setup: ## setup development dependencies
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+	scripts/download-golangci-lint.sh
 .PHONY: setup
 
 lint: ## run linter
