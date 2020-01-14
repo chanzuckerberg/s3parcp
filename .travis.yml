@@ -4,6 +4,8 @@ go:
   - "1.13.1"
 install:
   - scripts/download-golangci-lint.sh
+env:
+  - GO111MODULE=on
 jobs:
   include:
     - name: lint
@@ -20,5 +22,5 @@ jobs:
 
     - name: deploy
       stage: deploy
-      script: curl -sL https://git.io/goreleaser | bash
+      script: scripts/deploy.sh
       if: tag =~ /^v 
