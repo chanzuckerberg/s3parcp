@@ -3,5 +3,4 @@ dist
 .vscode
 coverage.txt
 bin
-apply/newdir
 s3parcp

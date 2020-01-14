@@ -3,15 +3,22 @@ language: go
 go:
   - "1.13.1"
 install:
-  - make setup
+  - scripts/download-golangci-lint.sh
 jobs:
   include:
     - name: lint
       stage: check
-      script: make lint-ci
+      script: ./bin/golangci-lint run
+
+    - name: format
+      stage: check
+      script: test -z $(gofmt -l .)
+
     - name: test
       stage: check
-      script:
-        - make test
-      after_success:
-        - bash <(curl -s https://codecov.io/bash)
+      script: go test ./...
+
+    - name: deploy
+      stage: deploy
+      script: curl -sL https://git.io/goreleaser | bash
+      if: tag =~ /^v 

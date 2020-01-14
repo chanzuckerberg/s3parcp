@@ -12,5 +12,8 @@ func LocalToLocal(opts options.Options) {
 	if err != nil {
 		panic(err)
 	}
-	ioutil.WriteFile(opts.Positional.Destination, bytes, 0644)
+	err = ioutil.WriteFile(opts.Positional.Destination, bytes, 0644)
+	if err != nil {
+		panic(err)
+	}
 }

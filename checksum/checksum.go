@@ -33,12 +33,20 @@ type partChecksum struct {
 func checksumWorker(readerAt *io.ReaderAt, partRanges <-chan partRange, checksums chan<- partChecksum) {
 	for partRange := range partRanges {
 		data := make([]byte, partRange.End-partRange.Start)
-		(*readerAt).ReadAt(data, partRange.Start)
-		checksum, err := CRC32CChecksum(data)
-		checksums <- partChecksum{
-			Chunk:    partRange.Chunk,
-			Checksum: checksum,
-			Error:    err,
+		_, err := (*readerAt).ReadAt(data, partRange.Start)
+		if err != nil {
+			checksums <- partChecksum{
+				Chunk:    partRange.Chunk,
+				Checksum: 0,
+				Error:    err,
+			}
+		} else {
+			checksum, err := CRC32CChecksum(data)
+			checksums <- partChecksum{
+				Chunk:    partRange.Chunk,
+				Checksum: checksum,
+				Error:    err,
+			}
 		}
 	}
 }

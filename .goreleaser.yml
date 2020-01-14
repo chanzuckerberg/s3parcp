@@ -1,25 +1,22 @@
 before:
   hooks:
-    - make clean
-
+    - go mod tidy
 builds:
-  - binary: s3parcp
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - darwin
-      - linux
-    goarch:
-      - amd64
-    ldflags:
-      - "-w -s -X github.com/chanzuckerberg/s3parcp/util.GitSha={{.Commit}} -X github.com/chanzuckerberg/s3parcp/util.Version={{.Version}} -X github.com/chanzuckerberg/s3parcp/util.Dirty=false -X github.com/chanzuckerberg/s3parcp/util.Release=true"
-
+- env:
+  - CGO_ENABLED=0
 archives:
-  - files:
-    - none*
-
-release:
-  prerelease: false
-
-env_files:
-  github_token: ~/.config/goreleaser/github_token
+- replacements:
+    darwin: Darwin
+    linux: Linux
+    386: i386
+    amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
