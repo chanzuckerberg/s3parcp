@@ -11,9 +11,9 @@ Unfortunately, Windows is not yet supported.
 ```bash
 # Update based on your platform
 PLATFORM=#Darwin_i386/Darwin_x86_64/Linux_i386/Linux_x86_64
-VERSION=v0.0.11-alpha
+VERSION=0.0.11-alpha
 RELEASES=https://github.com/chanzuckerberg/s3parcp/releases/download
-curl -L $RELEASES/$VERSION/s3parcp_$VERSION_$PLATFORM.tar.gz | tar zx
+curl -L $RELEASES/v$VERSION/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
 mv s3parcp ~/.local/bin
 ```
 
