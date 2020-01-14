@@ -3,16 +3,12 @@ language: go
 go:
   - "1.13.1"
 install:
-  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+  - scripts/download-golangci-lint.sh
 jobs:
   include:
     - name: lint
       stage: check
       script: ./bin/golangci-lint run
-
-    - name: vet
-      stage: check
-      script: go vet ./...
 
     - name: format
       stage: check
