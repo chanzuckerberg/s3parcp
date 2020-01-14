@@ -10,9 +10,9 @@ import (
 
 // Options - the options passed to the executable
 type Options struct {
-	PartSize    int64 `short:"p" long:"part-size" description:"Part size of parts to be downloaded"`
+	PartSize    int64 `short:"p" long:"part-size" description:"Part size in bytes of parts to be downloaded"`
 	Concurrency int   `short:"c" long:"concurrency" description:"Download concurrency"`
-	BufferSize  int   `short:"b" long:"buffer-size" description:"Size of download buffer"`
+	BufferSize  int   `short:"b" long:"buffer-size" description:"Size of download buffer in bytes"`
 	Checksum    bool  `long:"checksum" description:"Should compare checksum when downloading or place checksum in metadata while uploading"`
 	Duration    bool  `short:"d" long:"duration" description:"Prints the duration of the download"`
 	MMap        bool  `short:"m" long:"mmap" description:"Use mmap for downloads"`
