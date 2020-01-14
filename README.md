@@ -26,7 +26,7 @@ Application Options:
   -p, --part-size=   Part size in bytes of parts to be downloaded
   -c, --concurrency= Download concurrency
   -b, --buffer-size= Size of download buffer in bytes
-      --checksum     Should compare checksum when downloading or place checksum in metadata while uploading
+      --checksum     Compare checksum if downloading or place checksum in metadata if uploading
   -d, --duration     Prints the duration of the download
   -m, --mmap         Use mmap for downloads
 
