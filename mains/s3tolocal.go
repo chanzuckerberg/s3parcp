@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 
 	"github.com/chanzuckerberg/s3parcp/mmap"
 	"github.com/chanzuckerberg/s3parcp/options"
@@ -17,10 +18,19 @@ import (
 
 // S3ToLocal is the main method for copying s3 objects to local files
 func S3ToLocal(opts options.Options) {
+	isDir, err := s3utils.IsLocalDirectory(opts.Positional.Destination)
+	if err != nil {
+		panic(err)
+	}
+	if isDir {
+		opts.Positional.Destination = path.Join(opts.Positional.Destination, path.Base(opts.Positional.Source))
+	}
+
 	sourceBucket, sourceKey, err := s3utils.S3PathToBucketAndKey(opts.Positional.Source)
 	if err != nil {
 		message := fmt.Sprintf("Error parsing s3 path: %s\n", opts.Positional.Source)
 		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
 	}
 
