@@ -3,6 +3,7 @@ package mains
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/chanzuckerberg/s3parcp/checksum"
 	"github.com/chanzuckerberg/s3parcp/options"
@@ -16,10 +17,11 @@ import (
 
 // LocalToS3 is the main method for copying local files to s3 objects
 func LocalToS3(opts options.Options) {
-	destinationBucket, destinationKey, err := s3utils.S3PathToBucketAndKey(opts.Positional.Destination)
+	destinationBucket, destinationKeyOrDir, err := s3utils.S3PathToBucketAndKey(opts.Positional.Destination)
 	if err != nil {
 		message := fmt.Sprintf("Error parsing s3 path: %s\n", opts.Positional.Destination)
 		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
 	}
 
@@ -35,6 +37,18 @@ func LocalToS3(opts options.Options) {
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
 	})
+
+	destinationKey := destinationKeyOrDir
+	isDir, err := s3utils.IsS3Directory(client, destinationBucket, destinationKeyOrDir)
+	if err != nil {
+		message := fmt.Sprintf("Error checking if s3 path %s is a directory\n", opts.Positional.Destination)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		os.Exit(1)
+	}
+	if isDir {
+		destinationKey = path.Join(destinationKeyOrDir, path.Base(opts.Positional.Source))
+	}
 
 	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
 		u.PartSize = opts.PartSize
