@@ -75,8 +75,15 @@ func parallelCRCFuse(checksums *[]uint32, numParts, partSize, length, lastPartSi
 	return (*checksums)[0]
 }
 
+// ParallelChecksumOptions are the options for running a parallelized checksum
+type ParallelChecksumOptions struct {
+	Concurrency int
+	PartSize    int64
+	UseMmap     bool
+}
+
 // ParallelCRC32CChecksum a
-func ParallelCRC32CChecksum(filename string, partSize int64, concurrency int, useMmap bool) (uint32, error) {
+func ParallelCRC32CChecksum(filename string, opts ParallelChecksumOptions) (uint32, error) {
 	stats, err := os.Stat(filename)
 	if err != nil {
 		return 0, err
@@ -84,7 +91,7 @@ func ParallelCRC32CChecksum(filename string, partSize int64, concurrency int, us
 	length := stats.Size()
 
 	var readerAt io.ReaderAt
-	if useMmap {
+	if opts.UseMmap {
 		readerAt, err = mmap.Open(filename)
 	} else {
 		readerAt, err = os.Open(filename)
@@ -93,33 +100,33 @@ func ParallelCRC32CChecksum(filename string, partSize int64, concurrency int, us
 		return 0, err
 	}
 
-	numParts := length / partSize
-	lastPartSize := length % partSize
+	numParts := length / opts.PartSize
+	lastPartSize := length % opts.PartSize
 	if lastPartSize > 0 {
 		numParts++
 	} else {
-		lastPartSize = partSize
+		lastPartSize = opts.PartSize
 	}
 
 	partRanges := make(chan partRange, numParts)
 	partChecksums := make(chan partChecksum, numParts)
 	checksums := make([]uint32, numParts)
 
-	for w := 0; w < concurrency; w++ {
+	for w := 0; w < opts.Concurrency; w++ {
 		go checksumWorker(&readerAt, partRanges, partChecksums)
 	}
 
 	for i := int64(0); i < numParts-1; i++ {
 		partRanges <- partRange{
 			Chunk: i,
-			Start: i * partSize,
-			End:   (i + 1) * partSize,
+			Start: i * opts.PartSize,
+			End:   (i + 1) * opts.PartSize,
 		}
 	}
 
 	partRanges <- partRange{
 		Chunk: numParts - 1,
-		Start: (numParts - 1) * partSize,
+		Start: (numParts - 1) * opts.PartSize,
 		End:   length,
 	}
 
@@ -133,7 +140,7 @@ func ParallelCRC32CChecksum(filename string, partSize int64, concurrency int, us
 		checksums[partChecksum.Chunk] = partChecksum.Checksum
 	}
 
-	checksum := parallelCRCFuse(&checksums, numParts, partSize, length, lastPartSize)
+	checksum := parallelCRCFuse(&checksums, numParts, opts.PartSize, length, lastPartSize)
 
 	return checksum, nil
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
@@ -27,24 +28,41 @@ func IsS3Path(path string) bool {
 	return url.Scheme == "s3"
 }
 
-// IsS3Directory checks if an s3 path is a directory
-func IsS3Directory(client *s3.S3, bucket string, key string) (bool, error) {
-	maxKeys := int64(1)
-	res, err := client.ListObjectsV2(&s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(key),
-		MaxKeys: &maxKeys,
+// S3Exists checks if an s3 path is an object
+func S3Exists(client *s3.S3, bucket string, prefix string) (bool, error) {
+	_, err := client.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(prefix),
 	})
+
+	if aerr, ok := err.(awserr.Error); ok && aerr.Code() == "NotFound" {
+		return false, nil
+	}
+
+	return true, err
+}
+
+// IsS3Directory checks if an s3 path is a directory
+func IsS3Directory(client *s3.S3, bucket string, prefix string) (bool, error) {
+	// Add trailing / to the prefix to avoid partial matches
+	if prefix[len(prefix)-1] != '/' {
+		prefix = prefix + "/"
+	}
+
+	// Only one key is required for the check
+	var maxKeys int64 = 1
+	request := s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucket),
+		Prefix:  aws.String(prefix),
+		MaxKeys: &maxKeys,
+	}
+	res, err := client.ListObjectsV2(&request)
 	if err != nil {
 		return false, err
 	}
 
-	contents := res.Contents
-	if len(contents) == 0 {
-		return false, nil
-	}
-
-	if *contents[0].Key == key {
+	// If no files match the prefix it isn't a directory
+	if len(res.Contents) == 0 {
 		return false, nil
 	}
 

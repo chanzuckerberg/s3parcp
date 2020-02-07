@@ -1,88 +1,85 @@
 package mains
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
 
-	"github.com/chanzuckerberg/s3parcp/checksum"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/chanzuckerberg/s3parcp/utils"
 )
+
+func getUploadJobs(client *s3.S3, source string, destination string) ([]s3utils.UploadJob, error) {
+	destinationBucket, destinationPrefix, err := s3utils.S3PathToBucketAndKey(destination)
+	if err != nil {
+		message := fmt.Sprintf("Encountered error while parsing s3 path: %s\n", destination)
+		os.Stderr.WriteString(message)
+		return []s3utils.UploadJob{}, err
+	}
+
+	sourceStat, err := os.Stat(source)
+	if err != nil {
+		return []s3utils.UploadJob{}, err
+	}
+	isSourceDir := sourceStat.IsDir()
+
+	isDestDir, err := s3utils.IsS3Directory(client, destinationBucket, destinationPrefix)
+	if err != nil {
+		return []s3utils.UploadJob{}, err
+	}
+
+	destExists, err := s3utils.S3Exists(client, destinationBucket, destinationPrefix)
+	// We don't want to create a direcory with the same name as an object but if there is
+	//   already a directory with that name it's fine to put stuff in it
+	if !isDestDir && isSourceDir && destExists {
+		return []s3utils.UploadJob{}, errors.New("Cannot copy directory to existing object")
+	}
+
+	filepaths, err := utils.ListFilesRec(source)
+	uploadJobs := make([]s3utils.UploadJob, len(filepaths))
+
+	for i, filepath := range filepaths {
+		destinationKey := destinationPrefix
+		if !isSourceDir && isDestDir {
+			destinationKey = path.Join(destinationKey, path.Base(source))
+		}
+		if isSourceDir && isDestDir {
+			destinationKey = path.Join(destinationPrefix, filepath[len(source):])
+		}
+		uploadJobs[i] = s3utils.NewUploadJob(
+			destinationBucket,
+			destinationKey,
+			filepath,
+		)
+	}
+
+	return uploadJobs, err
+}
 
 // LocalToS3 is the main method for copying local files to s3 objects
 func LocalToS3(opts options.Options) {
-	destinationBucket, destinationKeyOrDir, err := s3utils.S3PathToBucketAndKey(opts.Positional.Destination)
-	if err != nil {
-		message := fmt.Sprintf("Error parsing s3 path: %s\n", opts.Positional.Destination)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+	uploaderOptions := s3utils.UploaderOptions{
+		BufferSize:  opts.BufferSize,
+		Checksum:    opts.Checksum,
+		Concurrency: opts.Concurrency,
+		Mmap:        opts.Mmap,
+		PartSize:    opts.PartSize,
 	}
+	uploader := s3utils.NewUploader(uploaderOptions)
 
-	sess := session.Must(
-		session.NewSessionWithOptions(
-			session.Options{
-				SharedConfigState: session.SharedConfigEnable,
-			},
-		),
+	uploadJobs, err := getUploadJobs(
+		uploader.Client,
+		opts.Positional.Source,
+		opts.Positional.Destination,
 	)
-
-	disableSSL := true
-	client := s3.New(sess, &aws.Config{
-		DisableSSL: &disableSSL,
-	})
-
-	destinationKey := destinationKeyOrDir
-	isDir, err := s3utils.IsS3Directory(client, destinationBucket, destinationKeyOrDir)
-	if err != nil {
-		message := fmt.Sprintf("Error checking if s3 path %s is a directory\n", opts.Positional.Destination)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
-	}
-	if isDir {
-		destinationKey = path.Join(destinationKeyOrDir, path.Base(opts.Positional.Source))
-	}
-
-	uploader := s3manager.NewUploader(sess, func(u *s3manager.Uploader) {
-		u.PartSize = opts.PartSize
-		u.Concurrency = opts.Concurrency
-		u.S3 = client
-		if opts.BufferSize > 0 {
-			u.BufferProvider = s3manager.NewBufferedReadSeekerWriteToPool(opts.BufferSize)
-		}
-	})
-
-	metadata := make(map[string]*string)
-	if opts.Checksum {
-		crc32cChecksum, err := checksum.ParallelCRC32CChecksum(opts.Positional.Source, opts.PartSize, opts.Concurrency, opts.MMap)
-		if err != nil {
-			os.Stderr.WriteString("Error computing crc32c checksum of source file\n")
-			panic(err)
-		}
-		crc32cChecksumString := fmt.Sprintf("%X", crc32cChecksum)
-		metadata[s3utils.Crc32cChecksumMetadataName] = &crc32cChecksumString
-	}
-
-	// Open a file to upload
-	f, err := os.Open(opts.Positional.Source)
 	if err != nil {
 		panic(err)
 	}
 
-	// Write the contents of S3 Object to the file
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket:   aws.String(destinationBucket),
-		Key:      aws.String(destinationKey),
-		Body:     f,
-		Metadata: metadata,
-	})
+	err = uploader.UploadAll(uploadJobs)
 	if err != nil {
 		panic(err)
 	}

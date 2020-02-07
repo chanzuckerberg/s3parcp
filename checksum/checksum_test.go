@@ -60,7 +60,12 @@ func TestParallelCRC32CChecksum(t *testing.T) {
 		t.FailNow()
 	}
 
-	parallelChecksum, err := ParallelCRC32CChecksum(filepath, 10, 10, false)
+	opts := ParallelChecksumOptions{
+		Concurrency: 10,
+		PartSize:    10,
+		UseMmap:     false,
+	}
+	parallelChecksum, err := ParallelCRC32CChecksum(filepath, opts)
 	if err != nil {
 		t.Errorf("ParallelCRC32CChecksum errored with %s", err)
 		t.FailNow()

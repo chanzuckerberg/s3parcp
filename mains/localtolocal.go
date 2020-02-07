@@ -1,19 +1,13 @@
 package mains
 
 import (
-	"io/ioutil"
+	"os"
 
 	"github.com/chanzuckerberg/s3parcp/options"
 )
 
 // LocalToLocal is the main method for copying local files to local files
 func LocalToLocal(opts options.Options) {
-	bytes, err := ioutil.ReadFile(opts.Positional.Source)
-	if err != nil {
-		panic(err)
-	}
-	err = ioutil.WriteFile(opts.Positional.Destination, bytes, 0644)
-	if err != nil {
-		panic(err)
-	}
+	os.Stderr.WriteString("Copying between local destinations is not supported\n")
+	os.Exit(2)
 }

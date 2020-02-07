@@ -27,7 +27,7 @@ func (mf MmappedFile) Close() error {
 	return nil
 }
 
-// WriteAt writes the p bytes at off offset in a mmaped file's data
+// WriteAt writes the bytes from p starting at off offset in a mmaped file's data
 func (mf MmappedFile) WriteAt(p []byte, off int64) (int, error) {
 	if int64(len(p))+off > mf.Size {
 		// TODO
@@ -39,6 +39,25 @@ func (mf MmappedFile) WriteAt(p []byte, off int64) (int, error) {
 		n++
 	}
 	return n, nil
+}
+
+// ReadAt reads bytes into p starting at off offset in a mmaped file's data
+func (mf MmappedFile) ReadAt(p []byte, off int64) (int, error) {
+	if int64(len(p))+off > mf.Size {
+		// TODO
+		return 0, nil
+	}
+	n := 0
+	for i := 0; i < len(p); i++ {
+		p[i] = mf.Data[int64(i)+off]
+		n++
+	}
+	return n, nil
+}
+
+// Read reads bytes into p starting at offset 0 in a mmaped file's data
+func (mf MmappedFile) Read(p []byte) (int, error) {
+	return mf.ReadAt(p, 0)
 }
 
 // CreateFile creates a new mmaped file

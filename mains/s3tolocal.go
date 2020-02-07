@@ -2,102 +2,97 @@ package mains
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 
-	"github.com/chanzuckerberg/s3parcp/mmap"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
+
+func getDownloadJobs(client *s3.S3, source string, destination string) ([]s3utils.DownloadJob, error) {
+	sourceBucket, sourcePrefix, err := s3utils.S3PathToBucketAndKey(source)
+	if err != nil {
+		message := fmt.Sprintf("Encountered error while parsing s3 path: %s\n", source)
+		os.Stderr.WriteString(message)
+		return []s3utils.DownloadJob{}, err
+	}
+
+	isSourceDir, err := s3utils.IsS3Directory(client, sourceBucket, sourcePrefix)
+	if err != nil {
+		return []s3utils.DownloadJob{}, err
+	}
+
+	destStat, err := os.Stat(destination)
+	isDestDir := false
+	if err != nil {
+		if !(os.IsNotExist(err) && !isSourceDir) {
+			return []s3utils.DownloadJob{}, err
+		}
+	} else {
+		isDestDir = destStat.IsDir()
+	}
+
+	res, err := client.ListObjectsV2(&s3.ListObjectsV2Input{
+		Bucket: aws.String(sourceBucket),
+		Prefix: aws.String(sourcePrefix),
+	})
+	if err != nil {
+		return []s3utils.DownloadJob{}, err
+	}
+	objects := res.Contents
+	keys := []string{}
+	for _, object := range objects {
+		key := *object.Key
+		if key != sourcePrefix {
+			keys = append(keys, key)
+		}
+	}
+	downloadJobs := make([]s3utils.DownloadJob, len(keys))
+
+	for i, key := range keys {
+		destinationFilepath := destination
+		if !isSourceDir && isDestDir {
+			destinationFilepath = path.Join(destinationFilepath, path.Base(source))
+		}
+		if isSourceDir && isDestDir {
+			destinationFilepath = path.Join(destinationFilepath, key[len(sourcePrefix):])
+		}
+		fmt.Println(key, destinationFilepath)
+		downloadJobs[i] = s3utils.NewDownloadJob(
+			sourceBucket,
+			key,
+			destinationFilepath,
+		)
+	}
+
+	return downloadJobs, err
+}
 
 // S3ToLocal is the main method for copying s3 objects to local files
 func S3ToLocal(opts options.Options) {
-	isDir, err := s3utils.IsLocalDirectory(opts.Positional.Destination)
-	if err != nil {
-		panic(err)
+	downloaderOptions := s3utils.DownloaderOptions{
+		BufferSize:  opts.BufferSize,
+		Checksum:    opts.Checksum,
+		Concurrency: opts.Concurrency,
+		Mmap:        opts.Mmap,
+		PartSize:    opts.PartSize,
 	}
-	if isDir {
-		opts.Positional.Destination = path.Join(opts.Positional.Destination, path.Base(opts.Positional.Source))
-	}
+	downloader := s3utils.NewDownloader(downloaderOptions)
 
-	sourceBucket, sourceKey, err := s3utils.S3PathToBucketAndKey(opts.Positional.Source)
-	if err != nil {
-		message := fmt.Sprintf("Error parsing s3 path: %s\n", opts.Positional.Source)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
-	}
-
-	sess := session.Must(
-		session.NewSessionWithOptions(
-			session.Options{
-				SharedConfigState: session.SharedConfigEnable,
-			},
-		),
+	downloadJobs, err := getDownloadJobs(
+		downloader.Client,
+		opts.Positional.Source,
+		opts.Positional.Destination,
 	)
-
-	httpClient := &http.Client{
-		Timeout: 15e9,
-	}
-	disableSSL := true
-	maxRetries := 3
-	client := s3.New(sess, &aws.Config{
-		DisableSSL: &disableSSL,
-		HTTPClient: httpClient,
-		MaxRetries: &maxRetries,
-	})
-
-	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
-		d.PartSize = opts.PartSize
-		d.Concurrency = opts.Concurrency
-		d.S3 = client
-		if opts.BufferSize > 0 {
-			d.BufferProvider = s3manager.NewPooledBufferedWriterReadFromProvider(opts.BufferSize)
-		}
-	})
-
-	headObjectOutput, _ := client.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(sourceBucket),
-		Key:    aws.String(sourceKey),
-	})
-
-	type file interface {
-		WriteAt(p []byte, off int64) (n int, err error)
-		Close() error
-	}
-	var f file
-	if opts.MMap {
-		contentLength := *headObjectOutput.ContentLength
-		f, err = mmap.CreateFile(opts.Positional.Destination, contentLength)
-		if err != nil {
-			panic(err)
-		}
-	} else {
-		// Create a file to write the S3 Object contents to.
-		f, err = os.Create(opts.Positional.Destination)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	// Write the contents of S3 Object to the file
-	_, err = downloader.Download(f, &s3.GetObjectInput{
-		Bucket: aws.String(sourceBucket),
-		Key:    aws.String(sourceKey),
-	})
 	if err != nil {
 		panic(err)
 	}
 
-	f.Close()
-
-	if opts.Checksum {
-		s3utils.CompareChecksum(headObjectOutput, opts.Positional.Destination, opts)
+	err = downloader.DownloadAll(downloadJobs)
+	if err != nil {
+		panic(err)
 	}
 }
