@@ -72,7 +72,7 @@ func getDownloadJobs(client *s3.S3, source string, destination string) ([]s3util
 }
 
 // S3ToLocal is the main method for copying s3 objects to local files
-func S3ToLocal(opts options.Options) {
+func S3ToLocal(opts options.Options, source Path, destination Path) {
 	downloaderOptions := s3utils.DownloaderOptions{
 		BufferSize:  opts.BufferSize,
 		Checksum:    opts.Checksum,
