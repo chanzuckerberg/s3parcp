@@ -2,7 +2,6 @@ package mains
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 
@@ -42,14 +41,10 @@ func S3ToLocal(opts options.Options) {
 		),
 	)
 
-	httpClient := &http.Client{
-		Timeout: 15e9,
-	}
 	disableSSL := true
 	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
-		HTTPClient: httpClient,
 		MaxRetries: &maxRetries,
 	})
 
