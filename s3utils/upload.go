@@ -2,7 +2,6 @@ package s3utils
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -39,15 +38,10 @@ func NewUploader(opts UploaderOptions) Uploader {
 		),
 	)
 
-	// TODO make these configurable
-	httpClient := &http.Client{
-		Timeout: 15e9,
-	}
 	disableSSL := true
 	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
-		HTTPClient: httpClient,
 		MaxRetries: &maxRetries,
 	})
 

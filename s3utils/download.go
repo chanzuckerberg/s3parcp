@@ -1,7 +1,6 @@
 package s3utils
 
 import (
-	"net/http"
 	"os"
 	"path"
 
@@ -39,15 +38,10 @@ func NewDownloader(opts DownloaderOptions) Downloader {
 		),
 	)
 
-	// TODO make these configurable
-	httpClient := &http.Client{
-		Timeout: 15e9,
-	}
 	disableSSL := true
 	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
-		HTTPClient: httpClient,
 		MaxRetries: &maxRetries,
 	})
 
