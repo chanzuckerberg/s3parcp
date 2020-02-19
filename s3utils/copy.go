@@ -286,6 +286,9 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 
 func (c *Copier) localCopy(src string, dest string) error {
 	err := os.MkdirAll(path.Dir(dest), os.ModePerm)
+	if err != nil {
+		return err
+	}
 
 	sourceFileStat, err := os.Stat(src)
 	if err != nil {
