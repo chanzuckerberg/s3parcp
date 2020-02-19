@@ -21,7 +21,7 @@ const Crc32cChecksumMetadataName = "Crc32c-Checksum"
 // GetCRC32CChecksum gets the crc32c checksum from the metadata of an s3 object
 func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
 	if headObjectOutput.Metadata == nil {
-		return 0, nil
+		return 0, errors.New("object has no crc32c checksum set")
 	}
 
 	crc32cChecksumString := *headObjectOutput.Metadata[Crc32cChecksumMetadataName]
