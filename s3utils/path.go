@@ -1,8 +1,9 @@
-package transparents3
+package s3utils
 
 import (
 	"fmt"
 	"net/url"
+	"path"
 
 	"github.com/aws/aws-sdk-go/service/s3"
 )
@@ -14,6 +15,11 @@ type Path interface {
 	IsS3() bool
 	IsLocal() bool
 	ListPathsWithPrefix() ([]Path, error)
+	Join(...string) Path
+	Base() string
+	WithoutPrefix(Path) string
+	ToStringWithoutBucket() string
+	Bucket() (string, error)
 	ToString() string
 }
 
@@ -24,6 +30,10 @@ func s3PathToBucketAndKey(s3path string) (string, string, error) {
 		return "", "", err
 	}
 	return url.Host, url.Path[1:], nil
+}
+
+func bucketAndKeyToS3Path(bucket string, key string) string {
+	return fmt.Sprintf("s3://%s", path.Join(bucket, key))
 }
 
 // isS3Path checks whether a string is an s3 path

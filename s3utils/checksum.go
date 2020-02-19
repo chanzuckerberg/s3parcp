@@ -31,7 +31,7 @@ func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
 
 	crc32cChecksum, err := strconv.ParseUint(crc32cChecksumString, 16, 32)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("crc32c checksum: %s is not a valid hexidecimal 32 bit unsigned int\n", crc32cChecksumString))
+		os.Stderr.WriteString(fmt.Sprintf("crc32c checksum: %s is not a valid hexadecimal 32 bit unsigned int\n", crc32cChecksumString))
 		return 0, err
 	}
 
