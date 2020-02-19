@@ -32,18 +32,18 @@ func NewCopyJob(source Path, destination Path) CopyJob {
 
 // GetCopyJobs gets the jobs required to copy between two paths
 func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
+	destExists, err := dest.Exists()
+	if err != nil {
+		return []CopyJob{}, err
+	}
+
 	isSrcDir, err := src.IsDir()
 	if err != nil {
 		return []CopyJob{}, err
 	}
 
 	isDestDir, err := dest.IsDir()
-	if err != nil {
-		return []CopyJob{}, err
-	}
-
-	destExists, err := dest.Exists()
-	if err != nil {
+	if destExists && err != nil {
 		return []CopyJob{}, err
 	}
 
