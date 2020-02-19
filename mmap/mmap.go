@@ -67,7 +67,7 @@ func CreateFile(filename string, length int64) (*MmappedFile, error) {
 
 	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	data, err := syscall.Mmap(fd, 0, int(length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
@@ -99,7 +99,7 @@ func OpenFile(filename string) (*MmappedFile, error) {
 
 	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	data, err := syscall.Mmap(fd, 0, int(stats.Size()), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)

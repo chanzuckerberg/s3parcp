@@ -245,8 +245,7 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		}
 		crc32cChecksum, err := checksum.ParallelCRC32CChecksum(src, checksumOptions)
 		if err != nil {
-			os.Stderr.WriteString("Error computing crc32c checksum of source file\n")
-			panic(err)
+			return errors.New("Error computing crc32c checksum of source file")
 		}
 		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
 	}

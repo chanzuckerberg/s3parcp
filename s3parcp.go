@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -23,12 +24,14 @@ func main() {
 
 	sourcePath, err := s3utils.NewPath(client, opts.Positional.Source)
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		os.Exit(1)
 	}
 
 	destPath, err := s3utils.NewPath(client, opts.Positional.Destination)
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		os.Exit(1)
 	}
 
 	copierOpts := s3utils.CopierOptions{
@@ -41,12 +44,14 @@ func main() {
 	copier := s3utils.NewCopier(copierOpts)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath)
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		os.Exit(1)
 	}
 
 	err = copier.CopyAll(jobs)
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		os.Exit(1)
 	}
 
 	duration := time.Since(before)
