@@ -18,6 +18,11 @@ type s3Path struct {
 
 // IsDir Checks if a s3Path is a directory
 func (p s3Path) IsDir() (bool, error) {
+	// Consider the bucket alone as a directory
+	if p.prefix == "" {
+		return true, nil
+	}
+
 	// Add trailing / to the prefix to avoid partial matches
 	prefix := utils.AddTrailingSlash(p.prefix)
 
@@ -43,6 +48,11 @@ func (p s3Path) IsDir() (bool, error) {
 
 // Exists Checks if a s3Path is a directory
 func (p s3Path) Exists() (bool, error) {
+	// The bucket alone exists
+	if p.prefix == "" {
+		return true, nil
+	}
+
 	_, err := p.client.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(p.bucket),
 		Key:    aws.String(p.prefix),

@@ -29,7 +29,11 @@ func s3PathToBucketAndKey(s3path string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return url.Host, url.Path[1:], nil
+	key := ""
+	if url.Path != "/" && url.Path != "" {
+		key = url.Path[1:]
+	}
+	return url.Host, key, nil
 }
 
 func bucketAndKeyToS3Path(bucket string, key string) string {
