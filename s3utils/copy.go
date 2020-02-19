@@ -214,7 +214,8 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		}
 		expectedChecksum, err := s3checksum.GetCRC32CChecksum(headObjectResponse)
 		if err != nil {
-			return fmt.Errorf("while getting checksum from object: %s metadata encountered error: %s", key, err)
+			s3Path := "s3://" + path.Join(bucket, key)
+			return fmt.Errorf("while getting checksum from object: %s metadata encountered error: %s", s3Path, err)
 		}
 
 		checksum, err := checksum.ParallelCRC32CChecksum(dest, checksumOptions)
