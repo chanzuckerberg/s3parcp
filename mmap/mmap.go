@@ -50,11 +50,6 @@ func (mf MmappedFile) Read(p []byte) (int, error) {
 
 // CreateFile creates a new mmaped file
 func CreateFile(filename string, length int64) (*MmappedFile, error) {
-	_, err := os.Stat(filename)
-	if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("File %s already exists", filename)
-	}
-
 	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
 	if err != nil {
 		return nil, err
