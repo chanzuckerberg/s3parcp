@@ -47,6 +47,15 @@ func main() {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
 	}
+	if len(jobs) == 0 {
+		filesOrObjects := "files"
+		if sourcePath.IsS3() {
+			filesOrObjects = "objects"
+		}
+		message := fmt.Sprintf("no %s found at path %s\n", filesOrObjects, sourcePath)
+		os.Stderr.WriteString(message)
+		os.Exit(1)
+	}
 
 	err = copier.CopyAll(jobs)
 	if err != nil {
