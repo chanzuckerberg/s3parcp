@@ -223,7 +223,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		}
 
 		if expectedChecksum != checksum {
-			return fmt.Errorf("file: %s checksum did not match", dest)
+			return fmt.Errorf("checksum did not match for file: %s", dest)
 		}
 	}
 
