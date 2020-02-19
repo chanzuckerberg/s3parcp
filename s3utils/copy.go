@@ -156,8 +156,6 @@ func NewCopier(opts CopierOptions) Copier {
 }
 
 func (c *Copier) download(bucket string, key string, dest string) error {
-	var err error = nil
-
 	// Only get object info if mmap or checksum is enabled
 	var headObjectResponse *s3.HeadObjectOutput
 	if c.Options.Mmap || c.Options.Checksum {
@@ -166,7 +164,10 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 			Key:    aws.String(key),
 		}
 
-		headObjectResponse, err = c.Client.HeadObject(&headObjectInput)
+		headObjectResponse, err := c.Client.HeadObject(&headObjectInput)
+		if err := nil {
+			return err
+		}
 	}
 
 	getObjectInput := s3.GetObjectInput{
@@ -174,7 +175,10 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		Key:    aws.String(key),
 	}
 
-	err = os.MkdirAll(path.Dir(dest), os.ModePerm)
+	err := os.MkdirAll(path.Dir(dest), os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("while creating directory: %s encountered error: %s", path.Dir(dest), err)
+	}
 
 	// TODO make an mmap API that is compatible with os.File to avoid this branching
 	if c.Options.Mmap {
@@ -182,26 +186,23 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		if err != nil {
 			return err
 		}
-		_, downloadErr := c.Downloader.Download(file, &getObjectInput)
-		err = file.Close()
-		// Return the download error if encountered but we still want to close the file
-		if downloadErr != nil {
-			return downloadErr
+		defer file.Close()
+
+		_, err := c.Downloader.Download(file, &getObjectInput)
+		if err != nil {
+			return err
 		}
 	} else {
 		file, err := os.Create(dest)
 		if err != nil {
 			return err
 		}
-		_, downloadErr := c.Downloader.Download(file, &getObjectInput)
-		err = file.Close()
-		// Return the download error if encountered but we still want to close the file
-		if downloadErr != nil {
-			return downloadErr
+		defer file.Close()
+
+		_, err := c.Downloader.Download(file, &getObjectInput)
+		if err != nil {
+			return err
 		}
-	}
-	if err != nil {
-		return err
 	}
 
 	if c.Options.Checksum {
@@ -225,7 +226,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		}
 	}
 
-	return err
+	return nil
 }
 
 func (c *Copier) upload(src string, bucket string, key string) error {
