@@ -1,7 +1,7 @@
 package s3utils
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
@@ -65,11 +65,6 @@ func (p localPath) ListPathsWithPrefix() ([]Path, error) {
 	return filepaths, err
 }
 
-// ToString converts a LocalPath to a raw string path
-func (p localPath) ToString() string {
-	return p.raw
-}
-
 // Join joins suffixes to this path
 func (p localPath) Join(suffixes ...string) Path {
 	joinArgs := append([]string{p.raw}, suffixes...)
@@ -87,13 +82,20 @@ func (p localPath) ToStringWithoutBucket() string {
 	return p.raw
 }
 
-// WithoutPrefix TODO
+// WithoutPrefix returns a string representation of this path with the
+//   prefixPath (ignoring it's s3 bucket) removed from the begining. This is
+//   helpful for getting the partial path of a file to be
+//   appended to a destination directory.
 func (p localPath) WithoutPrefix(prefixPath Path) string {
 	prefixLength := len(prefixPath.ToStringWithoutBucket())
 	return p.raw[prefixLength:]
 }
 
-// Bucket TODO
+// Bucket returns an error since localPath has no bucket
 func (p localPath) Bucket() (string, error) {
-	return "", errors.New("")
+	return "", fmt.Errorf("requested bucket of non-s3 path: %s", p)
+}
+
+func (p localPath) String() string {
+	return p.raw
 }

@@ -20,7 +20,7 @@ type Path interface {
 	WithoutPrefix(Path) string
 	ToStringWithoutBucket() string
 	Bucket() (string, error)
-	ToString() string
+	String() string
 }
 
 // s3PathToBucketAndKey converts an s3 path into it's bucket and key

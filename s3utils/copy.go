@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/chanzuckerberg/s3parcp/checksum"
 	"github.com/chanzuckerberg/s3parcp/mmap"
+	"github.com/chanzuckerberg/s3parcp/s3checksum"
 )
 
 // CopyJob defines a file/object copy
@@ -31,23 +32,48 @@ func NewCopyJob(source Path, destination Path) CopyJob {
 
 // GetCopyJobs gets the jobs required to copy between two paths
 func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
-	// TODO deal with errors
 	isSrcDir, err := src.IsDir()
-	isDestDir, err := dest.IsDir()
-	destExists, err := dest.Exists()
+	if err != nil {
+		return []CopyJob{}, err
+	}
 
-	// We don't want to create a direcory with the same name as an object but if there is
-	//   already a directory with that name it's fine to put stuff in it
+	isDestDir, err := dest.IsDir()
+	if err != nil {
+		return []CopyJob{}, err
+	}
+
+	destExists, err := dest.Exists()
+	if err != nil {
+		return []CopyJob{}, err
+	}
+
 	if !isDestDir && isSrcDir {
 		if !destExists {
-			// TODO error
+			// If the destination doesn't exist and the source is a directory
+			//   create a local directory. This brings local behavior in line
+			//   with s3, where it is possible to upload to a non-existant folder
+			//   and the folder will be created automatically.
 			if dest.IsLocal() {
-				os.MkdirAll(dest.ToString(), os.ModePerm)
+				err = os.MkdirAll(dest.String(), os.ModePerm)
+				if err != nil {
+					return []CopyJob{}, err
+				}
 			}
+
+			// Since a local directory was created if necessary it can be assumed
+			//   that the destination is a directory if the source was a directory
 			isDestDir = true
 		} else {
-			// TODO update comment
-			return []CopyJob{}, errors.New("Cannot copy directory to existing object or file")
+			dirOrFolder := "directory"
+			if src.IsS3() {
+				dirOrFolder = "folder"
+			}
+			fileOrObject := "file"
+			if dest.IsS3() {
+				fileOrObject = "object"
+			}
+
+			return []CopyJob{}, fmt.Errorf("cannot copy %s: %s to existing %s: %s", dirOrFolder, fileOrObject, src, dest)
 		}
 	}
 
@@ -95,6 +121,7 @@ func NewCopier(opts CopierOptions) Copier {
 		),
 	)
 
+	// TODO make configurable
 	disableSSL := true
 	maxRetries := 3
 	client := s3.New(sess, &aws.Config{
@@ -183,7 +210,19 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 			PartSize:    c.Options.PartSize,
 			UseMmap:     c.Options.Mmap,
 		}
-		CompareChecksum(headObjectResponse, dest, checksumOptions)
+		expectedChecksum, err := s3checksum.GetCRC32CChecksum(headObjectResponse)
+		if err != nil {
+			return fmt.Errorf("while getting checksum from object: %s metadata encountered error: %s", key, err)
+		}
+
+		checksum, err := checksum.ParallelCRC32CChecksum(dest, checksumOptions)
+		if err != nil {
+			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", dest, err)
+		}
+
+		if expectedChecksum != checksum {
+			return fmt.Errorf("file: %s checksum did not match", dest)
+		}
 	}
 
 	return err
@@ -195,7 +234,7 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		Key:    aws.String(key),
 	}
 
-	// Only compute checksum if we need to
+	// Only compute checksum if it is necessary
 	if c.Options.Checksum {
 		checksumOptions := checksum.ParallelChecksumOptions{
 			Concurrency: c.Options.Concurrency,
@@ -207,9 +246,7 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 			os.Stderr.WriteString("Error computing crc32c checksum of source file\n")
 			panic(err)
 		}
-		crc32cChecksumString := fmt.Sprintf("%X", crc32cChecksum)
-		metadata := make(map[string]*string)
-		metadata[Crc32cChecksumMetadataName] = &crc32cChecksumString
+		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
 	}
 
 	var uploadErr error
@@ -274,25 +311,32 @@ func (c *Copier) localCopy(src string, dest string) error {
 
 // Copy executes a copy job
 func (c *Copier) Copy(copyJob CopyJob) error {
-	// TODO lots
 	if copyJob.source.IsS3() && copyJob.destination.IsS3() {
-		return errors.New("Both S3")
+		return errors.New("Copying between s3 is not yet supported")
 	} else if !copyJob.source.IsS3() && copyJob.destination.IsS3() {
-		bucket, _ := copyJob.destination.Bucket()
+		bucket, err := copyJob.destination.Bucket()
+		if err != nil {
+			return fmt.Errorf("path: %s was determined to be an s3 path but getting it's bucket encountered error: %s", copyJob.destination, err)
+		}
+
 		return c.upload(
-			copyJob.source.ToString(),
+			copyJob.source.String(),
 			bucket,
 			copyJob.destination.ToStringWithoutBucket(),
 		)
 	} else if copyJob.source.IsS3() && !copyJob.destination.IsS3() {
-		bucket, _ := copyJob.source.Bucket()
+		bucket, err := copyJob.source.Bucket()
+		if err != nil {
+			return fmt.Errorf("path: %s was determined to be an s3 path but getting it's bucket encountered error: %s", copyJob.source, err)
+		}
+
 		return c.download(
 			bucket,
 			copyJob.source.ToStringWithoutBucket(),
-			copyJob.destination.ToString(),
+			copyJob.destination.String(),
 		)
 	} else {
-		return c.localCopy(copyJob.source.ToString(), copyJob.destination.ToString())
+		return c.localCopy(copyJob.source.String(), copyJob.destination.String())
 	}
 }
 

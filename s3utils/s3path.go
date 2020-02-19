@@ -102,11 +102,6 @@ func (p s3Path) ListPathsWithPrefix() ([]Path, error) {
 	return paths, err
 }
 
-// ToString converts a s3Path to a raw string path
-func (p s3Path) ToString() string {
-	return p.raw
-}
-
 // Join joins suffixes to this path
 func (p s3Path) Join(suffixes ...string) Path {
 	rawJoinArgs := append([]string{p.raw}, suffixes...)
@@ -121,7 +116,10 @@ func (p s3Path) ToStringWithoutBucket() string {
 	return p.prefix
 }
 
-// WithoutPrefix TODO
+// WithoutPrefix returns a string representation of this path with the
+//   prefixPath (ignoring it's s3 bucket) removed from the begining. This is
+//   helpful for getting the partial path of a file to be
+//   appended to a destination directory.
 func (p s3Path) WithoutPrefix(prefixPath Path) string {
 	prefixLength := len(prefixPath.ToStringWithoutBucket())
 	return p.prefix[prefixLength:]
@@ -132,7 +130,11 @@ func (p s3Path) Base() string {
 	return path.Base(p.raw)
 }
 
-// Bucket TODO
+// Bucket returns the s3 bucket of this path
 func (p s3Path) Bucket() (string, error) {
 	return p.bucket, nil
+}
+
+func (p s3Path) String() string {
+	return p.raw
 }

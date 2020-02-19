@@ -40,6 +40,10 @@ func main() {
 	}
 	copier := s3utils.NewCopier(copierOpts)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath)
+	if err != nil {
+		panic(err)
+	}
+
 	err = copier.CopyAll(jobs)
 	if err != nil {
 		panic(err)
