@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/chanzuckerberg/s3parcp/utils"
 )
 
 type s3Path struct {
@@ -24,7 +23,7 @@ func (p s3Path) IsDir() (bool, error) {
 	}
 
 	// Add trailing / to the prefix to avoid partial matches
-	prefix := utils.AddTrailingSlash(p.prefix)
+	prefix := addTrailingSlash(p.prefix)
 
 	// Only one key is required for the check
 	var maxKeys int64 = 1
@@ -87,7 +86,7 @@ func (p s3Path) ListPathsWithPrefix() ([]Path, error) {
 	}
 
 	// Add trailing / to the prefix to avoid partial matches
-	prefixDir := utils.AddTrailingSlash(p.prefix)
+	prefixDir := addTrailingSlash(p.prefix)
 
 	objects := res.Contents
 	paths := []Path{}

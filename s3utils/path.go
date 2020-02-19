@@ -35,6 +35,7 @@ func s3PathToBucketAndKey(s3path string) (string, string, error) {
 	return url.Host, key, nil
 }
 
+// bucketAndKeyToS3Path converts a bucket and key to an s3 path
 func bucketAndKeyToS3Path(bucket string, key string) string {
 	return fmt.Sprintf("s3://%s", path.Join(bucket, key))
 }
@@ -47,6 +48,14 @@ func isS3Path(path string) bool {
 	}
 
 	return url.Scheme == "s3"
+}
+
+// addTrailingSlash adds a / to the end of a string if there isn't one there
+func addTrailingSlash(path string) string {
+	if path[len(path)-1] != '/' {
+		return path + "/"
+	}
+	return path
 }
 
 // NewPath creates a Path from a raw string
