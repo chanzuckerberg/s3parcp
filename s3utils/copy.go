@@ -250,34 +250,31 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
 	}
 
-	var uploadErr error
-	var fileCloseErr error
 	// TODO make an mmap API that is compatible with os.File to avoid this branching
 	if c.Options.Mmap {
 		file, err := mmap.OpenFile(src)
 		if err != nil {
 			return err
 		}
+		defer file.Close()
+
 		uploadInput.Body = file
-		_, uploadErr = c.Uploader.Upload(&uploadInput)
-		fileCloseErr = file.Close()
+		_, err = c.Uploader.Upload(&uploadInput)
+		if err != nil {
+			return err
+		}
 	} else {
 		file, err := os.Open(src)
 		if err != nil {
 			return err
 		}
+		defer file.Close()
+
 		uploadInput.Body = file
-		_, uploadErr = c.Uploader.Upload(&uploadInput)
-		fileCloseErr = file.Close()
-	}
-
-	// Return the upload error if encountered but we still want to close the file
-	if uploadErr != nil {
-		return uploadErr
-	}
-
-	if fileCloseErr != nil {
-		return fileCloseErr
+		_, err = c.Uploader.Upload(&uploadInput)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

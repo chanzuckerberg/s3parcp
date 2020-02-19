@@ -2,6 +2,7 @@ package mmap
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"syscall"
 )
@@ -29,28 +30,17 @@ func (mf MmappedFile) Close() error {
 
 // WriteAt writes the bytes from p starting at off offset in a mmaped file's data
 func (mf MmappedFile) WriteAt(p []byte, off int64) (int, error) {
-	if int64(len(p))+off > mf.Size {
-		return 0, nil
-	}
-	n := 0
-	for i := 0; i < len(p); i++ {
-		mf.Data[int64(i)+off] = p[i]
-		n++
-	}
-	return n, nil
+	return copy(mf.Data[off:], p), nil
 }
 
 // ReadAt reads bytes into p starting at off offset in a mmaped file's data
 func (mf MmappedFile) ReadAt(p []byte, off int64) (int, error) {
-	if int64(len(p))+off > mf.Size {
-		return 0, nil
+	n := copy(p, mf.Data[off:])
+	var err error = nil
+	if n < len(p) {
+		err = io.EOF
 	}
-	n := 0
-	for i := 0; i < len(p); i++ {
-		p[i] = mf.Data[int64(i)+off]
-		n++
-	}
-	return n, nil
+	return n, err
 }
 
 // Read reads bytes into p starting at offset 0 in a mmaped file's data
@@ -97,7 +87,7 @@ func OpenFile(filename string) (*MmappedFile, error) {
 		return nil, fmt.Errorf("File %s does not exist", filename)
 	}
 
-	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
+	fd, err := syscall.Open(filename, syscall.O_RDWR, 0664)
 	if err != nil {
 		return nil, err
 	}
