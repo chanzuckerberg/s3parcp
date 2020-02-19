@@ -164,8 +164,9 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 			Key:    aws.String(key),
 		}
 
-		headObjectResponse, err := c.Client.HeadObject(&headObjectInput)
-		if err := nil {
+		var err error
+		headObjectResponse, err = c.Client.HeadObject(&headObjectInput)
+		if err != nil {
 			return err
 		}
 	}
@@ -188,7 +189,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		}
 		defer file.Close()
 
-		_, err := c.Downloader.Download(file, &getObjectInput)
+		_, err = c.Downloader.Download(file, &getObjectInput)
 		if err != nil {
 			return err
 		}
@@ -199,7 +200,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		}
 		defer file.Close()
 
-		_, err := c.Downloader.Download(file, &getObjectInput)
+		_, err = c.Downloader.Download(file, &getObjectInput)
 		if err != nil {
 			return err
 		}
