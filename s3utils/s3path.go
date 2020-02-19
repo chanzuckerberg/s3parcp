@@ -46,7 +46,7 @@ func (p s3Path) IsDir() (bool, error) {
 	return true, nil
 }
 
-// Exists Checks if a s3Path is a directory
+// Exists Checks if a s3Path exists as an object or a folder
 func (p s3Path) Exists() (bool, error) {
 	// The bucket alone exists
 	if p.prefix == "" {
@@ -65,12 +65,12 @@ func (p s3Path) Exists() (bool, error) {
 	return true, err
 }
 
-// IsS3 checks if a s3Path is an s3Path (it will never be)
+// IsS3 checks if a s3Path is an s3Path (it always will be)
 func (p s3Path) IsS3() bool {
 	return true
 }
 
-// IsLocal checks if a localPath is a s3Path (it will always be)
+// IsLocal checks if a localPath is a s3Path (it never will be)
 func (p s3Path) IsLocal() bool {
 	return false
 }
@@ -121,18 +121,9 @@ func (p s3Path) Join(suffixes ...string) Path {
 	return p
 }
 
-// ToStringWithoutBucket returns a raw string path without the s3 bucket
-func (p s3Path) ToStringWithoutBucket() string {
+// WithoutBucket returns a raw string path without the s3 bucket
+func (p s3Path) WithoutBucket() string {
 	return p.prefix
-}
-
-// WithoutPrefix returns a string representation of this path with the
-//   prefixPath (ignoring it's s3 bucket) removed from the begining. This is
-//   helpful for getting the partial path of a file to be
-//   appended to a destination directory.
-func (p s3Path) WithoutPrefix(prefixPath Path) string {
-	prefixLength := len(prefixPath.ToStringWithoutBucket())
-	return p.prefix[prefixLength:]
 }
 
 // Base gets the base name of this path

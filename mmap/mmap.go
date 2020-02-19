@@ -15,7 +15,7 @@ type MmappedFile struct {
 	Size           int64
 }
 
-// Close munmaps a mmaped file and closes it's file descriptor
+// Close munmaps a mmaped file and closes its file descriptor
 func (mf MmappedFile) Close() error {
 	err := syscall.Munmap(mf.Data)
 	if err != nil {

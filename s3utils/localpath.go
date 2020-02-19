@@ -24,7 +24,7 @@ func (p localPath) IsDir() (bool, error) {
 	return stat.IsDir(), nil
 }
 
-// Exists Checks if a localPath is a directory
+// Exists Checks if a localPath exists as a file or a directory
 func (p localPath) Exists() (bool, error) {
 	_, err := os.Stat(p.raw)
 	if os.IsNotExist(err) {
@@ -77,18 +77,9 @@ func (p localPath) Base() string {
 	return path.Base(p.raw)
 }
 
-// ToStringWithoutBucket returns a raw string path without the s3 bucket
-func (p localPath) ToStringWithoutBucket() string {
+// WithoutBucket returns a raw string path without the s3 bucket
+func (p localPath) WithoutBucket() string {
 	return p.raw
-}
-
-// WithoutPrefix returns a string representation of this path with the
-//   prefixPath (ignoring it's s3 bucket) removed from the begining. This is
-//   helpful for getting the partial path of a file to be
-//   appended to a destination directory.
-func (p localPath) WithoutPrefix(prefixPath Path) string {
-	prefixLength := len(prefixPath.ToStringWithoutBucket())
-	return p.raw[prefixLength:]
 }
 
 // Bucket returns an error since localPath has no bucket

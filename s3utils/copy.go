@@ -51,7 +51,7 @@ func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
 		if !destExists {
 			// If the destination doesn't exist and the source is a directory
 			//   create a local directory. This brings local behavior in line
-			//   with s3, where it is possible to upload to a non-existant folder
+			//   with s3, where it is possible to upload to a non-existent folder
 			//   and the folder will be created automatically.
 			if dest.IsLocal() {
 				err = os.MkdirAll(dest.String(), os.ModePerm)
@@ -86,7 +86,10 @@ func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
 			destFilepath = destFilepath.Join(src.Base())
 		}
 		if isSrcDir && isDestDir {
-			destFilepath = destFilepath.Join(srcFilepath.WithoutPrefix(src))
+			srcPrefixLength := len(src.WithoutBucket())
+			srcFilepathWithoutBucket := srcFilepath.WithoutBucket()
+			srcFilepathSuffix := srcFilepathWithoutBucket[srcPrefixLength:]
+			destFilepath = destFilepath.Join(srcFilepathSuffix)
 		}
 		copyJobs[i] = NewCopyJob(srcFilepath, destFilepath)
 	}
@@ -182,6 +185,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	}
 
 	// TODO make an mmap API that is compatible with os.File to avoid this branching
+	// https://github.com/chanzuckerberg/s3parcp/issues/27
 	if c.Options.Mmap {
 		file, err := mmap.CreateFile(dest, *headObjectResponse.ContentLength)
 		if err != nil {
@@ -246,12 +250,13 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		}
 		crc32cChecksum, err := checksum.ParallelCRC32CChecksum(src, checksumOptions)
 		if err != nil {
-			return errors.New("Error computing crc32c checksum of source file")
+			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", src, err)
 		}
 		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
 	}
 
 	// TODO make an mmap API that is compatible with os.File to avoid this branching
+	// https://github.com/chanzuckerberg/s3parcp/issues/27
 	if c.Options.Mmap {
 		file, err := mmap.OpenFile(src)
 		if err != nil {
@@ -318,23 +323,23 @@ func (c *Copier) Copy(copyJob CopyJob) error {
 	} else if !copyJob.source.IsS3() && copyJob.destination.IsS3() {
 		bucket, err := copyJob.destination.Bucket()
 		if err != nil {
-			return fmt.Errorf("path: %s was determined to be an s3 path but getting it's bucket encountered error: %s", copyJob.destination, err)
+			return fmt.Errorf("path: %s was determined to be an s3 path but getting its bucket encountered error: %s", copyJob.destination, err)
 		}
 
 		return c.upload(
 			copyJob.source.String(),
 			bucket,
-			copyJob.destination.ToStringWithoutBucket(),
+			copyJob.destination.WithoutBucket(),
 		)
 	} else if copyJob.source.IsS3() && !copyJob.destination.IsS3() {
 		bucket, err := copyJob.source.Bucket()
 		if err != nil {
-			return fmt.Errorf("path: %s was determined to be an s3 path but getting it's bucket encountered error: %s", copyJob.source, err)
+			return fmt.Errorf("path: %s was determined to be an s3 path but getting its bucket encountered error: %s", copyJob.source, err)
 		}
 
 		return c.download(
 			bucket,
-			copyJob.source.ToStringWithoutBucket(),
+			copyJob.source.WithoutBucket(),
 			copyJob.destination.String(),
 		)
 	} else {

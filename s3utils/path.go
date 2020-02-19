@@ -17,13 +17,12 @@ type Path interface {
 	ListPathsWithPrefix() ([]Path, error)
 	Join(...string) Path
 	Base() string
-	WithoutPrefix(Path) string
-	ToStringWithoutBucket() string
+	WithoutBucket() string
 	Bucket() (string, error)
 	String() string
 }
 
-// s3PathToBucketAndKey converts an s3 path into it's bucket and key
+// s3PathToBucketAndKey converts an s3 path into its bucket and key
 func s3PathToBucketAndKey(s3path string) (string, string, error) {
 	url, err := url.Parse(s3path)
 	if err != nil {
