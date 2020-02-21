@@ -14,6 +14,8 @@ type Path interface {
 	Exists() (bool, error)
 	IsS3() bool
 	IsLocal() bool
+	DirOrFolder() string
+	FileOrObject() string
 	ListPathsWithPrefix() ([]Path, error)
 	Join(...string) Path
 	Base() string

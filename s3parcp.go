@@ -42,7 +42,7 @@ func main() {
 		PartSize:    opts.PartSize,
 	}
 	copier := s3utils.NewCopier(copierOpts)
-	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath)
+	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)

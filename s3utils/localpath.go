@@ -43,6 +43,16 @@ func (p localPath) IsLocal() bool {
 	return true
 }
 
+// DirOrFolder returns "directory" for localPath and "folder" for s3Path
+func (p localPath) DirOrFolder() string {
+	return "directory"
+}
+
+// FileOrObject returns "object" for localPath and "file" for s3path
+func (p localPath) FileOrObject() string {
+	return "file"
+}
+
 // ListPathsWithPrefix lists all paths with the localPath as a prefix
 func (p localPath) ListPathsWithPrefix() ([]Path, error) {
 	filepaths := []Path{}

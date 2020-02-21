@@ -74,6 +74,16 @@ func (p s3Path) IsLocal() bool {
 	return false
 }
 
+// DirOrFolder returns "directory" for localPath and "folder" for s3Path
+func (p s3Path) DirOrFolder() string {
+	return "folder"
+}
+
+// FileOrObject returns "object" for localPath and "file" for s3path
+func (p s3Path) FileOrObject() string {
+	return "object"
+}
+
 // ListPathsWithPrefix lists all paths with the s3Path as a prefix
 func (p s3Path) ListPathsWithPrefix() ([]Path, error) {
 	res, err := p.client.ListObjectsV2(&s3.ListObjectsV2Input{

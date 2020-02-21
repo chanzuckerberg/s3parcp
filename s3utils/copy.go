@@ -31,7 +31,7 @@ func NewCopyJob(source Path, destination Path) CopyJob {
 }
 
 // GetCopyJobs gets the jobs required to copy between two paths
-func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
+func GetCopyJobs(src Path, dest Path, recursive bool) ([]CopyJob, error) {
 	destExists, err := dest.Exists()
 	if err != nil {
 		return []CopyJob{}, err
@@ -45,6 +45,11 @@ func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
 	isDestDir, err := dest.IsDir()
 	if destExists && err != nil {
 		return []CopyJob{}, err
+	}
+
+	if isSrcDir && !recursive {
+		error := fmt.Errorf("source %s is a %s but recursive was not specified", src, src.DirOrFolder())
+		return []CopyJob{}, error
 	}
 
 	if !isDestDir && isSrcDir {
@@ -64,16 +69,7 @@ func GetCopyJobs(src Path, dest Path) ([]CopyJob, error) {
 			//   that the destination is a directory if the source was a directory
 			isDestDir = true
 		} else {
-			dirOrFolder := "directory"
-			if src.IsS3() {
-				dirOrFolder = "folder"
-			}
-			fileOrObject := "file"
-			if dest.IsS3() {
-				fileOrObject = "object"
-			}
-
-			return []CopyJob{}, fmt.Errorf("cannot copy %s: %s to existing %s: %s", dirOrFolder, fileOrObject, src, dest)
+			return []CopyJob{}, fmt.Errorf("cannot copy %s: %s to existing %s: %s", src.DirOrFolder(), dest.FileOrObject(), src, dest)
 		}
 	}
 
