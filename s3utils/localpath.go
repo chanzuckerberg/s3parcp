@@ -48,7 +48,7 @@ func (p localPath) DirOrFolder() string {
 	return "directory"
 }
 
-// FileOrObject returns "object" for localPath and "file" for s3path
+// FileOrObject returns "file" for localPath and "object" for s3path
 func (p localPath) FileOrObject() string {
 	return "file"
 }
