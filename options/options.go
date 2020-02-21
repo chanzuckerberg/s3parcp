@@ -1,6 +1,7 @@
 package options
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -15,7 +16,8 @@ type Options struct {
 	BufferSize  int   `short:"b" long:"buffer-size" description:"Size of download buffer in bytes"`
 	Checksum    bool  `long:"checksum" description:"Compare checksum if downloading or place checksum in metadata if uploading"`
 	Duration    bool  `short:"d" long:"duration" description:"Prints the duration of the download"`
-	MMap        bool  `short:"m" long:"mmap" description:"Use mmap for downloads"`
+	Mmap        bool  `short:"m" long:"mmap" description:"Use mmap for downloads"`
+	Recursive   bool  `short:"r" long:"recursive" alias:"R" description:"Copy directories or folders recursively"`
 	Positional  struct {
 		Source      string `description:"Source to copy from" required:"yes"`
 		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`
@@ -27,6 +29,7 @@ func ParseArgs() Options {
 	var opts Options
 	_, err := flags.ParseArgs(&opts, os.Args[1:])
 	if err != nil {
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(2)
 	}
 

@@ -1,24 +1,49 @@
 package s3utils
 
 import (
+	"fmt"
 	"net/url"
-	"os"
+	"path"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-// S3PathToBucketAndKey converts an s3 path into it's bucket and key
-func S3PathToBucketAndKey(s3path string) (string, string, error) {
+// Path is an interface of functions to apply transparently to s3 or local paths
+type Path interface {
+	IsDir() (bool, error)
+	Exists() (bool, error)
+	IsS3() bool
+	IsLocal() bool
+	DirOrFolder() string
+	FileOrObject() string
+	ListPathsWithPrefix() ([]Path, error)
+	Join(...string) Path
+	Base() string
+	WithoutBucket() string
+	Bucket() (string, error)
+	String() string
+}
+
+// s3PathToBucketAndKey converts an s3 path into its bucket and key
+func s3PathToBucketAndKey(s3path string) (string, string, error) {
 	url, err := url.Parse(s3path)
 	if err != nil {
 		return "", "", err
 	}
-	return url.Host, url.Path[1:], nil
+	key := ""
+	if url.Path != "/" && url.Path != "" {
+		key = url.Path[1:]
+	}
+	return url.Host, key, nil
 }
 
-// IsS3Path checks whether a string is an s3 path
-func IsS3Path(path string) bool {
+// bucketAndKeyToS3Path converts a bucket and key to an s3 path
+func bucketAndKeyToS3Path(bucket string, key string) string {
+	return fmt.Sprintf("s3://%s", path.Join(bucket, key))
+}
+
+// isS3Path checks whether a string is an s3 path
+func isS3Path(path string) bool {
 	url, err := url.Parse(path)
 	if err != nil {
 		return false
@@ -27,38 +52,30 @@ func IsS3Path(path string) bool {
 	return url.Scheme == "s3"
 }
 
-// IsS3Directory checks if an s3 path is a directory
-func IsS3Directory(client *s3.S3, bucket string, key string) (bool, error) {
-	maxKeys := int64(1)
-	res, err := client.ListObjectsV2(&s3.ListObjectsV2Input{
-		Bucket:  aws.String(bucket),
-		Prefix:  aws.String(key),
-		MaxKeys: &maxKeys,
-	})
-	if err != nil {
-		return false, err
+// addTrailingSlash adds a / to the end of a string if there isn't one there
+func addTrailingSlash(path string) string {
+	if path[len(path)-1] != '/' {
+		return path + "/"
 	}
-
-	contents := res.Contents
-	if len(contents) == 0 {
-		return false, nil
-	}
-
-	if *contents[0].Key == key {
-		return false, nil
-	}
-
-	return true, nil
+	return path
 }
 
-// IsLocalDirectory checks if a local path is to a directory
-func IsLocalDirectory(path string) (bool, error) {
-	fileInfo, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false, nil
+// NewPath creates a Path from a raw string
+func NewPath(client *s3.S3, raw string) (Path, error) {
+	if isS3Path(raw) {
+		bucket, key, err := s3PathToBucketAndKey(raw)
+		if err != nil {
+			return nil, fmt.Errorf("parsing s3 path %s: %v", raw, err)
+		}
+		return s3Path{
+			bucket: bucket,
+			prefix: key,
+			raw:    raw,
+			client: client,
+		}, nil
 	}
-	if err != nil {
-		return false, err
-	}
-	return fileInfo.IsDir(), nil
+	return localPath{
+		raw:    raw,
+		client: client,
+	}, nil
 }

@@ -2,6 +2,7 @@ package mmap
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"syscall"
 )
@@ -14,7 +15,7 @@ type MmappedFile struct {
 	Size           int64
 }
 
-// Close munmaps a mmaped file and closes it's file descriptor
+// Close munmaps a mmaped file and closes its file descriptor
 func (mf MmappedFile) Close() error {
 	err := syscall.Munmap(mf.Data)
 	if err != nil {
@@ -27,30 +28,31 @@ func (mf MmappedFile) Close() error {
 	return nil
 }
 
-// WriteAt writes the p bytes at off offset in a mmaped file's data
+// WriteAt writes the bytes from p starting at off offset in a mmaped file's data
 func (mf MmappedFile) WriteAt(p []byte, off int64) (int, error) {
-	if int64(len(p))+off > mf.Size {
-		// TODO
-		return 0, nil
+	return copy(mf.Data[off:], p), nil
+}
+
+// ReadAt reads bytes into p starting at off offset in a mmaped file's data
+func (mf MmappedFile) ReadAt(p []byte, off int64) (int, error) {
+	n := copy(p, mf.Data[off:])
+	var err error = nil
+	if n < len(p) {
+		err = io.EOF
 	}
-	n := 0
-	for i := 0; i < len(p); i++ {
-		mf.Data[int64(i)+off] = p[i]
-		n++
-	}
-	return n, nil
+	return n, err
+}
+
+// Read reads bytes into p starting at offset 0 in a mmaped file's data
+func (mf MmappedFile) Read(p []byte) (int, error) {
+	return mf.ReadAt(p, 0)
 }
 
 // CreateFile creates a new mmaped file
 func CreateFile(filename string, length int64) (*MmappedFile, error) {
-	_, err := os.Stat(filename)
-	if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("File %s already exists", filename)
-	}
-
 	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	data, err := syscall.Mmap(fd, 0, int(length), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
@@ -80,9 +82,9 @@ func OpenFile(filename string) (*MmappedFile, error) {
 		return nil, fmt.Errorf("File %s does not exist", filename)
 	}
 
-	fd, err := syscall.Open(filename, syscall.O_CREAT|syscall.O_RDWR, 0664)
+	fd, err := syscall.Open(filename, syscall.O_RDWR, 0664)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	data, err := syscall.Mmap(fd, 0, int(stats.Size()), syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
