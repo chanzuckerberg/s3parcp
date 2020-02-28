@@ -52,6 +52,11 @@ func GetCopyJobs(src Path, dest Path, recursive bool) ([]CopyJob, error) {
 		return []CopyJob{}, error
 	}
 
+	if !isSrcDir && recursive {
+		error := fmt.Errorf("source %s is not a %s but recursive was specified", src, src.DirOrFolder())
+		return []CopyJob{}, error
+	}
+
 	if !isDestDir && isSrcDir {
 		if !destExists {
 			// If the destination doesn't exist and the source is a directory

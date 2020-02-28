@@ -11,9 +11,22 @@ import (
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
+// Update this with new versions
+const version = "0.1.0-alpha"
+
 func main() {
 	before := time.Now()
-	opts := options.ParseArgs()
+	opts, err := options.ParseArgs()
+
+	// go-flags will handle any logging to the user, just exit on error
+	if err != nil {
+		os.Exit(2)
+	}
+
+	if opts.Version {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	sess := session.Must(session.NewSessionWithOptions(
 		session.Options{
@@ -48,11 +61,7 @@ func main() {
 		os.Exit(1)
 	}
 	if len(jobs) == 0 {
-		filesOrObjects := "files"
-		if sourcePath.IsS3() {
-			filesOrObjects = "objects"
-		}
-		message := fmt.Sprintf("no %s found at path %s\n", filesOrObjects, sourcePath)
+		message := fmt.Sprintf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
 		os.Stderr.WriteString(message)
 		os.Exit(1)
 	}

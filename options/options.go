@@ -1,6 +1,7 @@
 package options
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -17,20 +18,26 @@ type Options struct {
 	Checksum    bool  `long:"checksum" description:"Compare checksum if downloading or place checksum in metadata if uploading"`
 	Duration    bool  `short:"d" long:"duration" description:"Prints the duration of the download"`
 	Mmap        bool  `short:"m" long:"mmap" description:"Use mmap for downloads"`
-	Recursive   bool  `short:"r" long:"recursive" alias:"R" description:"Copy directories or folders recursively"`
+	Recursive   bool  `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
+	Version     bool  `short:"v" long:"version" description:"Print the current version"`
 	Positional  struct {
-		Source      string `description:"Source to copy from" required:"yes"`
+		Source      string `description:"Source to copy from"`
 		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`
 	} `positional-args:"yes"`
 }
 
 // ParseArgs wraps flags.ParseArgs and adds system-dependent defaults
-func ParseArgs() Options {
+func ParseArgs() (Options, error) {
 	var opts Options
 	_, err := flags.ParseArgs(&opts, os.Args[1:])
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(2)
+		return opts, err
+	}
+
+	if !opts.Version && opts.Positional.Source == "" {
+		message := "the required argument `Source` was not provided"
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", message))
+		return opts, errors.New(message)
 	}
 
 	if opts.Positional.Destination == "" {
@@ -45,5 +52,5 @@ func ParseArgs() Options {
 		opts.Concurrency = runtime.NumCPU()
 	}
 
-	return opts
+	return opts, nil
 }
