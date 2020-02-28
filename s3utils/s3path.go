@@ -24,7 +24,7 @@ func (p s3Path) IsDir() (bool, error) {
 
 	// Paths with a trailing slash must be directories because creating
 	//   an object with a trailing slash doesn't work
-	if p.raw[len(p.raw)-1] != '/' {
+	if p.raw[len(p.raw)-1] == '/' {
 		return true, nil
 	}
 

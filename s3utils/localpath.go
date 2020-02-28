@@ -18,7 +18,7 @@ type localPath struct {
 func (p localPath) IsDir() (bool, error) {
 	// Paths with a trailing slash must be directories because creating
 	//   a file with a trailing slash doesn't work
-	if p.raw[len(p.raw)-1] != '/' {
+	if p.raw[len(p.raw)-1] == '/' {
 		return true, nil
 	}
 
