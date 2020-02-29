@@ -12,7 +12,7 @@ import (
 )
 
 // Update this with new versions
-const version = "0.1.1-alpha"
+const version = "0.1.2-alpha"
 
 func main() {
 	before := time.Now()
@@ -60,7 +60,7 @@ func main() {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
 	}
-	if len(jobs) == 0 {
+	if len(jobs) == 0 && !opts.Recursive {
 		message := fmt.Sprintf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
 		os.Stderr.WriteString(message)
 		os.Exit(1)
