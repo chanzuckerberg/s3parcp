@@ -20,7 +20,7 @@ type Options struct {
 	Mmap        bool   `short:"m" long:"mmap" description:"Use mmap for downloads"`
 	Recursive   bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
 	Version     bool   `short:"v" long:"version" description:"Print the current version"`
-	S3Url       string `long:"s3_url" description:"A custom s3 API url, also available as an environment variable 'S3PARCP_S3_URL'"`
+	S3Url       string `long:"s3_url" description:"A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)"`
 	Positional  struct {
 		Source      string `description:"Source to copy from"`
 		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`
