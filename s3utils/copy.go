@@ -116,14 +116,7 @@ type Copier struct {
 }
 
 // NewCopier creates a new Copier
-func NewCopier(opts CopierOptions) Copier {
-	sess := session.Must(
-		session.NewSessionWithOptions(
-			session.Options{
-				SharedConfigState: session.SharedConfigEnable,
-			},
-		),
-	)
+func NewCopier(opts CopierOptions, sess *session.Session) Copier {
 
 	// TODO make configurable
 	disableSSL := true

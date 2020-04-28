@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/chanzuckerberg/s3parcp/options"
@@ -12,7 +14,7 @@ import (
 )
 
 // Update this with new versions
-const version = "0.1.2-alpha"
+const version = "0.1.3-alpha"
 
 func main() {
 	before := time.Now()
@@ -33,6 +35,29 @@ func main() {
 			SharedConfigState: session.SharedConfigEnable,
 		},
 	))
+
+	if opts.S3Url != "" {
+		customDomainResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
+			if service == endpoints.S3ServiceID {
+				return endpoints.ResolvedEndpoint{
+					URL: opts.S3Url,
+				}, nil
+			}
+
+			return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
+		}
+		fmt.Println(opts.S3Url)
+
+		sess = session.Must(session.NewSessionWithOptions(
+			session.Options{
+				Config: aws.Config{
+					EndpointResolver: endpoints.ResolverFunc(customDomainResolver),
+				},
+				SharedConfigState: session.SharedConfigEnable,
+			},
+		))
+	}
+
 	client := s3.New(sess)
 
 	sourcePath, err := s3utils.NewPath(client, opts.Positional.Source)
@@ -54,7 +79,7 @@ func main() {
 		Mmap:        opts.Mmap,
 		PartSize:    opts.PartSize,
 	}
-	copier := s3utils.NewCopier(copierOpts)
+	copier := s3utils.NewCopier(copierOpts, sess)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
