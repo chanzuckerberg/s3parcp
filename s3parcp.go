@@ -14,7 +14,7 @@ import (
 )
 
 // Update this with new versions
-const version = "0.1.3-alpha"
+const version = "0.1.4-alpha"
 
 func main() {
 	before := time.Now()
@@ -46,7 +46,6 @@ func main() {
 
 			return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
 		}
-		fmt.Println(opts.S3Url)
 
 		sess = session.Must(session.NewSessionWithOptions(
 			session.Options{
