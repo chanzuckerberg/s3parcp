@@ -43,17 +43,39 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 	fd, err := syscall.Open(cacheFilename, syscall.O_CREAT|syscall.O_RDWR, 0600)
 	defer syscall.Close(fd)
 	if err != nil {
+		message := fmt.Sprintf("Encountered error while opening credentials file %s\n", cacheFilename)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
 		return err
 	}
 
 	err = syscall.Flock(fd, syscall.LOCK_EX)
-	defer syscall.Flock(fd, syscall.LOCK_UN)
 	if err != nil {
+		message := fmt.Sprintf("Encountered error while requesting a lock on credentials file %s\n", cacheFilename)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
 		return err
 	}
 
-	_, err = syscall.Write(fd, data)
-	return err
+	_, writeErr := syscall.Write(fd, data)
+
+	err = syscall.Flock(fd, syscall.LOCK_UN)
+
+	if writeErr != nil {
+		message := fmt.Sprintf("Encountered error while writing credentials file %s\n", cacheFilename)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
+		return writeErr
+	}
+
+	if err != nil {
+		message := fmt.Sprintf("Encountered error while unlocking credentials file %s\n", cacheFilename)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
+		return err
+	}
+
+	return nil
 }
 
 func readCacheFile(cacheFilename string) (cachedCredentials, error) {
