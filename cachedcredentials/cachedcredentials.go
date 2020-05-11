@@ -43,7 +43,7 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 	fd, err := syscall.Open(cacheFilename, syscall.O_CREAT|syscall.O_RDWR, 0600)
 	defer syscall.Close(fd)
 	if err != nil {
-		message := fmt.Sprintf("Encountered error while opening credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while opening credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return err
@@ -51,7 +51,7 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 
 	err = syscall.Flock(fd, syscall.LOCK_EX)
 	if err != nil {
-		message := fmt.Sprintf("Encountered error while requesting a lock on credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while requesting a lock on credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return err
@@ -62,14 +62,14 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 	err = syscall.Flock(fd, syscall.LOCK_UN)
 
 	if writeErr != nil {
-		message := fmt.Sprintf("Encountered error while writing credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while writing credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return writeErr
 	}
 
 	if err != nil {
-		message := fmt.Sprintf("Encountered error while unlocking credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while unlocking credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return err
@@ -82,29 +82,35 @@ func readCacheFile(cacheFilename string) (cachedCredentials, error) {
 	cachedCreds := cachedCredentials{}
 	bytes, err := ioutil.ReadFile(cacheFilename)
 	if err != nil {
-		message := fmt.Sprintf("Encountered error while reading cached credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while reading cached credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return cachedCreds, err
 	}
 	err = json.Unmarshal(bytes, &cachedCreds)
 	if err != nil {
-		message := fmt.Sprintf("Encountered error while parsing cached credentials file %s\n", cacheFilename)
+		message := fmt.Sprintf("Error: encountered error while parsing cached credentials file %s\n", cacheFilename)
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
 		return cachedCreds, err
 	}
-	return cachedCreds, err
+	return cachedCreds, nil
 }
 
 func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCredentials, error) {
 	credentials, err := f.Creds.Get()
 	if err != nil {
+		message := "Encountered error while fetching credentials\n"
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
 		return cachedCredentials{}, err
 	}
 
 	expiresAt, err := f.Creds.ExpiresAt()
 	if err != nil {
+		message := "Encountered error while fetching credential expiration date\n"
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
 		return cachedCredentials{}, err
 	}
 
@@ -132,6 +138,9 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 
 	useCache, err := fileExists(cacheFilename)
 	if err != nil {
+		message := fmt.Sprintf("Error: encountered error while checking for existence of cached credentials file %s\n", cacheFilename)
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
 		return credentials.Value{}, err
 	}
 
@@ -139,6 +148,10 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 
 	if useCache {
 		cachedCreds, err = readCacheFile(cacheFilename)
+		if err != nil {
+			message := "Warning: encountered error while reading cache file, ignoring and using fresh credentials\n"
+			os.Stderr.WriteString(message)
+		}
 		useCache = useCache && err == nil
 	}
 
