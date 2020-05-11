@@ -20,6 +20,12 @@ jobs:
       stage: check
       script: go test ./...
 
+    - name: deps
+      stage: check
+      script:
+        - make deps
+        - git diff --exit-code
+
     - name: deploy
       stage: deploy
       script: scripts/deploy.sh
