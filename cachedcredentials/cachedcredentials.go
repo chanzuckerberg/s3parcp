@@ -128,8 +128,16 @@ func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCred
 
 // Retrieve retrieves credentials
 func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
-	cacheDir := path.Join(os.Getenv("XDG_CACHE_HOME"), "s3parcp")
-	err := os.MkdirAll(cacheDir, os.ModePerm)
+	cacheHome, err := os.UserCacheDir()
+	if err != nil {
+		message := "Error: encountered error while getting user cache directory\n"
+		os.Stderr.WriteString(message)
+		os.Stderr.WriteString(err.Error() + "\n")
+		return credentials.Value{}, err
+	}
+
+	cacheDir := path.Join(cacheHome, "s3parcp")
+	err = os.MkdirAll(cacheDir, os.ModePerm)
 	if err != nil {
 		return credentials.Value{}, err
 	}
