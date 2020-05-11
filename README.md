@@ -30,6 +30,9 @@ Application Options:
       --checksum     Compare checksum if downloading or place checksum in metadata if uploading
   -d, --duration     Prints the duration of the download
   -m, --mmap         Use mmap for downloads
+  -r, --recursive    Copy directories or folders recursively
+  -v, --version      Print the current version
+      --s3_url=      A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)
 
 Help Options:
   -h, --help         Show this help message
