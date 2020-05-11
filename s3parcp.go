@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/chanzuckerberg/s3parcp/cachedcredentials"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
 // Update this with new versions
-const version = "0.1.4-alpha"
+const version = "0.1.5-alpha"
 
 func main() {
 	before := time.Now()
@@ -56,6 +58,9 @@ func main() {
 			},
 		))
 	}
+	sess.Config.Credentials = credentials.NewCredentials(&cachedcredentials.FileCacheProvider{
+		Creds: sess.Config.Credentials,
+	})
 
 	client := s3.New(sess)
 

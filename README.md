@@ -11,7 +11,7 @@ Unfortunately, Windows is not yet supported.
 ```bash
 # Update based on your platform
 PLATFORM=#Darwin_i386/Darwin_x86_64/Linux_i386/Linux_x86_64
-VERSION=0.1.4-alpha
+VERSION=0.1.5-alpha
 RELEASES=https://github.com/chanzuckerberg/s3parcp/releases/download
 curl -L $RELEASES/v$VERSION/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
 mv s3parcp ~/.local/bin
@@ -30,6 +30,9 @@ Application Options:
       --checksum     Compare checksum if downloading or place checksum in metadata if uploading
   -d, --duration     Prints the duration of the download
   -m, --mmap         Use mmap for downloads
+  -r, --recursive    Copy directories or folders recursively
+  -v, --version      Print the current version
+      --s3_url=      A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)
 
 Help Options:
   -h, --help         Show this help message
