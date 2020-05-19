@@ -106,13 +106,7 @@ func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCred
 		return cachedCredentials{}, err
 	}
 
-	expiresAt, err := f.Creds.ExpiresAt()
-	if err != nil {
-		message := "Encountered error while fetching credential expiration date\n"
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
-		return cachedCredentials{}, err
-	}
+	expiresAt, expirationError := f.Creds.ExpiresAt()
 
 	cachedCreds := cachedCredentials{
 		AccessKeyID:     credentials.AccessKeyID,
@@ -122,7 +116,12 @@ func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCred
 		SessionToken:    credentials.SessionToken,
 	}
 
-	err = writeCacheFile(cacheFilename, cachedCreds)
+	// If we get an error fetching the expiry don't save credentials
+	//   but still return new credentials. If they were saved they
+	//   would just be expired the next time so no point in saving them.
+	if expirationError != nil {
+		err = writeCacheFile(cacheFilename, cachedCreds)
+	}
 	return cachedCreds, err
 }
 
