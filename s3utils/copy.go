@@ -104,6 +104,7 @@ type CopierOptions struct {
 	Checksum    bool
 	Concurrency int
 	Mmap        bool
+	MaxRetries  int
 	PartSize    int64
 }
 
@@ -120,10 +121,11 @@ func NewCopier(opts CopierOptions, sess *session.Session) Copier {
 
 	// TODO make configurable
 	disableSSL := true
-	maxRetries := 3
+	logLevel := aws.LogDebugWithRequestRetries
 	client := s3.New(sess, &aws.Config{
 		DisableSSL: &disableSSL,
-		MaxRetries: &maxRetries,
+		MaxRetries: &opts.MaxRetries,
+		LogLevel:   &logLevel,
 	})
 
 	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {

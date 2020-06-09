@@ -21,6 +21,8 @@ type Options struct {
 	Recursive   bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
 	Version     bool   `short:"v" long:"version" description:"Print the current version"`
 	S3Url       string `long:"s3_url" description:"A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)"`
+	MaxRetries  int    `long:"max-retries" description:"Max per chunk retries"`
+	DisableSSL  bool   `long:"disable-ssl" description:"Disable SSL"`
 	Positional  struct {
 		Source      string `description:"Source to copy from"`
 		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`
@@ -50,7 +52,11 @@ func ParseArgs() (Options, error) {
 	}
 
 	if opts.Concurrency == 0 {
-		opts.Concurrency = runtime.NumCPU()
+		opts.Concurrency = runtime.NumCPU() / 2
+	}
+
+	if opts.MaxRetries == 0 {
+		opts.MaxRetries = 6
 	}
 
 	if opts.S3Url == "" {

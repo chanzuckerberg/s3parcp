@@ -16,7 +16,7 @@ import (
 )
 
 // Update this with new versions
-const version = "0.1.6-alpha"
+const version = "0.1.7-alpha"
 
 func main() {
 	before := time.Now()
@@ -81,6 +81,7 @@ func main() {
 		Checksum:    opts.Checksum,
 		Concurrency: opts.Concurrency,
 		Mmap:        opts.Mmap,
+		MaxRetries:  opts.MaxRetries,
 		PartSize:    opts.PartSize,
 	}
 	copier := s3utils.NewCopier(copierOpts, sess)
