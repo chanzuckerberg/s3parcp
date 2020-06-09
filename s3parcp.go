@@ -81,8 +81,10 @@ func main() {
 		Checksum:    opts.Checksum,
 		Concurrency: opts.Concurrency,
 		Mmap:        opts.Mmap,
+		DisableSSL:  opts.DisableSSL,
 		MaxRetries:  opts.MaxRetries,
 		PartSize:    opts.PartSize,
+		Verbose:     opts.Verbose,
 	}
 	copier := s3utils.NewCopier(copierOpts, sess)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
