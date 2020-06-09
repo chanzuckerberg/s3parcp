@@ -19,10 +19,11 @@ type Options struct {
 	Duration    bool   `short:"d" long:"duration" description:"Prints the duration of the download"`
 	Mmap        bool   `short:"m" long:"mmap" description:"Use mmap for downloads"`
 	Recursive   bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
-	Version     bool   `short:"v" long:"version" description:"Print the current version"`
+	Version     bool   `long:"version" description:"Print the current version"`
 	S3Url       string `long:"s3_url" description:"A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)"`
 	MaxRetries  int    `long:"max-retries" description:"Max per chunk retries"`
 	DisableSSL  bool   `long:"disable-ssl" description:"Disable SSL"`
+	Verbose     bool   `short:"v" long:"verbose" description:"verbose logging"`
 	Positional  struct {
 		Source      string `description:"Source to copy from"`
 		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`

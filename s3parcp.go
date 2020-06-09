@@ -16,7 +16,7 @@ import (
 )
 
 // Update this with new versions
-const version = "0.1.7-alpha"
+const version = "0.2.0-alpha"
 
 func main() {
 	before := time.Now()
