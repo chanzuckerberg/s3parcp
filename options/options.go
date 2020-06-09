@@ -53,6 +53,9 @@ func ParseArgs() (Options, error) {
 
 	if opts.Concurrency == 0 {
 		opts.Concurrency = runtime.NumCPU() / 2
+		if opts.Concurrency < 1 {
+			opts.Concurrency = 1
+		}
 	}
 
 	if opts.MaxRetries == 0 {
