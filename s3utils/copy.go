@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/chanzuckerberg/s3parcp/checksum"
+	"github.com/chanzuckerberg/crc-squared/crcsquared"
 	"github.com/chanzuckerberg/s3parcp/mmap"
 	"github.com/chanzuckerberg/s3parcp/s3checksum"
 )
@@ -213,10 +213,10 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	}
 
 	if c.Options.Checksum {
-		checksumOptions := checksum.ParallelChecksumOptions{
+		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
 			Concurrency: c.Options.Concurrency,
 			PartSize:    c.Options.PartSize,
-			UseMmap:     c.Options.Mmap,
+			Mmap:        c.Options.Mmap,
 		}
 		expectedChecksum, err := s3checksum.GetCRC32CChecksum(headObjectResponse)
 		if err != nil {
@@ -224,7 +224,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 			return fmt.Errorf("while getting checksum from object: %s metadata encountered error: %s", s3Path, err)
 		}
 
-		checksum, err := checksum.ParallelCRC32CChecksum(dest, checksumOptions)
+		checksum, err := crcsquared.ParallelCRC32CChecksumFile(dest, parallelChecksumFileOptions)
 		if err != nil {
 			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", dest, err)
 		}
@@ -245,12 +245,12 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 
 	// Only compute checksum if it is necessary
 	if c.Options.Checksum {
-		checksumOptions := checksum.ParallelChecksumOptions{
+		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
 			Concurrency: c.Options.Concurrency,
 			PartSize:    c.Options.PartSize,
-			UseMmap:     c.Options.Mmap,
+			Mmap:        c.Options.Mmap,
 		}
-		crc32cChecksum, err := checksum.ParallelCRC32CChecksum(src, checksumOptions)
+		crc32cChecksum, err := crcsquared.ParallelCRC32CChecksumFile(src, parallelChecksumFileOptions)
 		if err != nil {
 			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", src, err)
 		}
