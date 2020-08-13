@@ -30,9 +30,9 @@ type Options struct {
 }
 
 // ParseArgs wraps flags.ParseArgs and adds system-dependent defaults
-func ParseArgs() (Options, error) {
+func ParseArgs(args []string) (Options, error) {
 	var opts Options
-	_, err := flags.ParseArgs(&opts, os.Args[1:])
+	_, err := flags.ParseArgs(&opts, args)
 	if err != nil {
 		return opts, err
 	}

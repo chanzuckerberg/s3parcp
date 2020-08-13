@@ -18,7 +18,7 @@ import (
 var version string = "unset"
 
 func main() {
-	opts, err := options.ParseArgs()
+	opts, err := options.ParseArgs(os.Args[1:])
 
 	// go-flags will handle any logging to the user, just exit on error
 	if err != nil {

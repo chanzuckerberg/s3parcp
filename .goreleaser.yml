@@ -20,3 +20,5 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+signs:
+ - artifacts: checksum

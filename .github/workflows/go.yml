@@ -21,24 +21,24 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-        make setup
+      run: go get -v -t -d ./...
 
     - name: Build
-      run: make build
+      run: go build
 
     - name: Test
       run: |
-        make test-coverage
+        go test -coverprofile=coverage.txt -covermode=atomic ./...
         bash <(curl -s https://codecov.io/bash)
 
     - name: Lint
-      run: make lint
+      uses: golangci/golangci-lint-action@v1
+      with:
+        version: v1.29
 
     - name: Deps
       run: |
-        make deps
+        go mod tidy
         git diff --exit-code
 
     - name: Release
