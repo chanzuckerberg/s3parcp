@@ -23,6 +23,7 @@ jobs:
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
+        make setup
 
     - name: Build
       run: make build
