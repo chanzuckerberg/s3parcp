@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,11 +14,10 @@ import (
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
-// Update this with new versions
-const version = "0.2.1-alpha"
+// to be set with `-ldflags "-X main.version="`
+var version string = "unset"
 
 func main() {
-	before := time.Now()
 	opts, err := options.ParseArgs()
 
 	// go-flags will handle any logging to the user, just exit on error
@@ -102,10 +100,5 @@ func main() {
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
-	}
-
-	duration := time.Since(before)
-	if opts.Duration {
-		fmt.Println(duration.Seconds())
 	}
 }
