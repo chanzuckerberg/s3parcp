@@ -1,4 +1,4 @@
-name: Go
+name: Check
 
 on:
   push:
@@ -6,15 +6,15 @@ on:
 
 jobs:
 
-  build:
-    name: Build
+  Check:
+    name: Check
     runs-on: ubuntu-latest
     steps:
 
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.13
+        go-version: ^1.14
       id: go
 
     - name: Check out code into the Go module directory
