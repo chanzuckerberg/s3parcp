@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -15,23 +14,10 @@ import (
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
 
-// Update this with new versions
-const version = "0.2.1-alpha"
+// to be set with `-ldflags "-X main.version="`
+var version string = "unset"
 
-func main() {
-	before := time.Now()
-	opts, err := options.ParseArgs()
-
-	// go-flags will handle any logging to the user, just exit on error
-	if err != nil {
-		os.Exit(2)
-	}
-
-	if opts.Version {
-		fmt.Println(version)
-		os.Exit(0)
-	}
-
+func foo(opts options.Options) error {
 	sess := session.Must(session.NewSessionWithOptions(
 		session.Options{
 			SharedConfigState: session.SharedConfigEnable,
@@ -72,8 +58,7 @@ func main() {
 
 	destPath, err := s3utils.NewPath(client, opts.Positional.Destination)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+		return err
 	}
 
 	copierOpts := s3utils.CopierOptions{
@@ -89,23 +74,32 @@ func main() {
 	copier := s3utils.NewCopier(copierOpts, sess)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+		return err
 	}
+
 	if len(jobs) == 0 && !opts.Recursive {
-		message := fmt.Sprintf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
-		os.Stderr.WriteString(message)
-		os.Exit(1)
+		return fmt.Errorf("no %s found at path %s", sourcePath.FileOrObject(), sourcePath)
 	}
 
-	err = copier.CopyAll(jobs)
+	return copier.CopyAll(jobs)
+}
+
+func mainWork(args []string) error {
+	opts, err := options.ParseArgs()
+
+	// go-flags will handle any logging to the user, just exit on error
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+		os.Exit(2)
 	}
 
-	duration := time.Since(before)
-	if opts.Duration {
-		fmt.Println(duration.Seconds())
+	if opts.Version {
+		fmt.Println(version)
+		os.Exit(0)
 	}
+
+	return foo(opts)
+}
+
+func main() {
+	mainWork(os.Args)
 }

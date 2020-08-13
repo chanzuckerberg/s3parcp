@@ -16,7 +16,6 @@ type Options struct {
 	Concurrency int    `short:"c" long:"concurrency" description:"Download concurrency"`
 	BufferSize  int    `short:"b" long:"buffer-size" description:"Size of download buffer in bytes"`
 	Checksum    bool   `long:"checksum" description:"Compare checksum if downloading or place checksum in metadata if uploading"`
-	Duration    bool   `short:"d" long:"duration" description:"Prints the duration of the download"`
 	Mmap        bool   `short:"m" long:"mmap" description:"Use mmap for downloads"`
 	Recursive   bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
 	Version     bool   `long:"version" description:"Print the current version"`

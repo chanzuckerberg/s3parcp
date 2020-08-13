@@ -9,7 +9,7 @@ lint: ## run linter
 .PHONY: lint
 
 build:
-	go build
+	go build -ldflags "-X main.version=$(VERSION)"
 .PHONY: build
 
 deps: ## install dependencies
@@ -21,8 +21,8 @@ test: deps ## run tests
 .PHONY: test
 
 test-coverage: ## run tests and generate coverage report
-	go test -coverprofile=coverage.out -covermode=atomic ./...
-	go tool cover -html=coverage.out
+	go test -coverprofile=coverage.txt -covermode=atomic ./...
+	go tool cover -html=coverage.txt
 .PHONY: test-coverage
 
 install: ## install the s3parcp binary in $GOPATH/bin
