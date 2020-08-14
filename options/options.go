@@ -24,8 +24,8 @@ type Options struct {
 	DisableSSL  bool   `long:"disable-ssl" description:"Disable SSL"`
 	Verbose     bool   `short:"v" long:"verbose" description:"verbose logging"`
 	Positional  struct {
-		Source      string `description:"Source to copy from"`
-		Destination string `description:"Destination to copy to (Optional, defaults to source's base name)"`
+		Source      flags.Filename `description:"Source to copy from"`
+		Destination flags.Filename `description:"Destination to copy to (Optional, defaults to source's base name)"`
 	} `positional-args:"yes"`
 }
 
@@ -44,7 +44,7 @@ func ParseArgs(args []string) (Options, error) {
 	}
 
 	if opts.Positional.Destination == "" {
-		opts.Positional.Destination = path.Base(opts.Positional.Source)
+		opts.Positional.Destination = flags.Filename(path.Base(string(opts.Positional.Source)))
 	}
 
 	if opts.PartSize == 0 {
