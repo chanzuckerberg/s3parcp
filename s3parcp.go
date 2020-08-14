@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -62,13 +63,13 @@ func main() {
 
 	client := s3.New(sess)
 
-	sourcePath, err := s3utils.NewPath(client, opts.Positional.Source)
+	sourcePath, err := s3utils.NewPath(client, string(opts.Positional.Source))
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
 	}
 
-	destPath, err := s3utils.NewPath(client, opts.Positional.Destination)
+	destPath, err := s3utils.NewPath(client, string(opts.Positional.Destination))
 	if err != nil {
 		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
 		os.Exit(1)
@@ -87,7 +88,15 @@ func main() {
 	copier := s3utils.NewCopier(copierOpts, sess)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		if strings.HasPrefix(err.Error(), "AccessDenied") {
+			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: access denied\n")
+		} else if strings.HasPrefix(err.Error(), "NoSuchBucket") {
+			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: no such bucket\n")
+		} else if strings.HasPrefix(err.Error(), "MissingRegion") {
+			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: missing region configuration\n")
+		} else {
+			os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+		}
 		os.Exit(1)
 	}
 	if len(jobs) == 0 && !opts.Recursive {

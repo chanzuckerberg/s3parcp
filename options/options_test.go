@@ -14,11 +14,11 @@ func TestDefaults(t *testing.T) {
 		t.FailNow()
 	}
 
-	if opts.Positional.Source != source {
+	if string(opts.Positional.Source) != source {
 		t.Errorf("expected opts.Positional.Source: %s to equal %s", opts.Positional.Source, source)
 	}
 
-	if opts.Positional.Destination != source {
+	if string(opts.Positional.Destination) != source {
 		t.Errorf("expected opts.Positional.Destination: %s to equal %s", opts.Positional.Destination, source)
 	}
 
