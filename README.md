@@ -6,16 +6,31 @@ This project is still in pre-release. There are some issues and features I would
 
 ## Installation
 
-Unfortunately, Windows is not yet supported.
+### Linux
+
+#### Debian (Ubuntu/Mint)
+
+#### Fedora (RHEL/CentOS)
+
+#### Other Linux
 
 ```bash
 # Update based on your platform
 PLATFORM=#Darwin_i386/Darwin_x86_64/Linux_i386/Linux_x86_64
 VERSION=0.2.1-alpha
-RELEASES=https://github.com/chanzuckerberg/s3parcp/releases/download
-curl -L $RELEASES/v$VERSION/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/latest/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
 mv s3parcp ~/.local/bin
 ```
+### MacOS
+
+```bash
+brew tap chanzuckerberg/tap
+brew install s3parcp
+```
+
+### Windows
+
+Unfortunately, due to difficulty with mmap compatibility, Windows is not yet supported. If you want to use s3parcp on Windows 10 I recommend [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). Once you have set this up you can install with the instructions for the Linux distribution you chose. There is currently an open [issue](https://github.com/chanzuckerberg/s3parcp/issues/20) to track this. If this feature is important to you please comment or react on the issue, or make a PR for it.
 
 ## Usage
 

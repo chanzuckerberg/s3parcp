@@ -10,6 +10,29 @@ archives:
     linux: Linux
     386: i386
     amd64: x86_64
+brews:
+  - description: 'Copy large files to, from, and between s3 buckets with parallelism'
+    github:
+      owner: chanzuckerberg
+      name: homebrew-tap
+    homepage: 'https://github.com/chanzuckerberg/s3parcp'
+    test: system "#{bin}/s3parcp --version"
+    install: |
+      bin.install "s3parcp" |
+      source/postinstall.sh
+nfpms:
+  - 
+    vendor: chanzuckerberg
+    homepage: 'https://github.com/chanzuckerberg/s3parcp'
+    description: 'Copy large files to, from, and between s3 buckets with parallelism'
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    scripts:
+      postinstall: "scripts/postinstall.sh"
+      postremove: "scripts/postremove.sh"
+    
 checksum:
   name_template: 'checksums.txt'
 snapshot:
