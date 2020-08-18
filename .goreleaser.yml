@@ -31,8 +31,8 @@ nfpms:
       - deb
       - rpm
     scripts:
-      postinstall: "source scripts/postinstall.sh"
-      postremove: "source scripts/postremove.sh"
+      postinstall: 'scripts/postinstall.sh'
+      postremove: 'scripts/postremove.sh'
     
 checksum:
   name_template: 'checksums.txt'
