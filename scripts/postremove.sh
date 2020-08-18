@@ -1,3 +1,3 @@
 #!/bin/bash
 
-complete -r s3parcp
+rm /etc/bash_completion.d/s3parcp

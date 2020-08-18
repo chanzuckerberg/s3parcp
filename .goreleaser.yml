@@ -10,17 +10,17 @@ archives:
     linux: Linux
     386: i386
     amd64: x86_64
-# TODO: uncomment when access is granted
-# brews:
-#   - description: 'Copy large files to, from, and between s3 buckets with parallelism'
-#     github:
-#       owner: chanzuckerberg
-#       name: homebrew-tap
-#     homepage: 'https://github.com/chanzuckerberg/s3parcp'
-#     test: system "#{bin}/s3parcp --version"
-#     install: |
-#       bin.install "s3parcp" |
-#       source/postinstall.sh
+brews:
+   - description: 'Copy large files to, from, and between s3 buckets with parallelism'
+     github:
+       owner: chanzuckerberg
+       name: homebrew-tap
+     homepage: 'https://github.com/chanzuckerberg/s3parcp'
+     test: system "#{bin}/s3parcp --version"
+     install: |
+       bin.install "s3parcp" |
+       bash_completion.install completion.sh
+
 nfpms:
   - 
     vendor: chanzuckerberg
@@ -31,8 +31,8 @@ nfpms:
       - deb
       - rpm
     scripts:
-      postinstall: "scripts/postinstall.sh"
-      postremove: "scripts/postremove.sh"
+      postinstall: "source scripts/postinstall.sh"
+      postremove: "source scripts/postremove.sh"
     
 checksum:
   name_template: 'checksums.txt'
