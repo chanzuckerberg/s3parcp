@@ -33,10 +33,7 @@ nfpms:
       - rpm
     files:
       'completion.sh': '/etc/bash_completion.d/s3parcp'
-    scripts:
-      postinstall: 'scripts/postinstall.sh'
-      postremove: 'scripts/postremove.sh'
-    
+
 checksum:
   name_template: 'checksums.txt'
 snapshot:
