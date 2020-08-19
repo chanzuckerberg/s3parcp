@@ -20,7 +20,7 @@ brews:
      install: |
        bin.install "s3parcp"
        include.install "utils.bash"
-       bash_completion.install "completions/bash => "s3parcp"
+       bash_completion.install "completions/bash" => "s3parcp"
 
 nfpms:
   - 
