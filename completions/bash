@@ -11,4 +11,4 @@ _s3parcp() {
     return 0
 }
 
-complete -F _s3pacp s3parcp
+complete -F _s3parcp s3parcp
