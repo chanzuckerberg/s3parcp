@@ -19,7 +19,6 @@ brews:
      test: system "#{bin}/s3parcp --version"
      install: |
        bin.install "s3parcp"
-       include.install "utils.bash"
        bash_completion.install "completions/bash" => "s3parcp"
 
 nfpms:
