@@ -1,25 +1,32 @@
 before:
   hooks:
     - go mod tidy
+
 builds:
 - env:
   - CGO_ENABLED=0
+
 archives:
 - replacements:
     darwin: Darwin
     linux: Linux
     386: i386
     amd64: x86_64
+  files:
+    - LICENSE.txt
+    - README.md
+    - completions/**/*
+
 brews:
-   - description: 'Copy large files to, from, and between s3 buckets with parallelism'
-     github:
-       owner: chanzuckerberg
-       name: homebrew-tap
-     homepage: 'https://github.com/chanzuckerberg/s3parcp'
-     test: system "#{bin}/s3parcp --version"
-     install: |
-       bin.install "s3parcp"
-       bash_completion.install "completions/bash" => "s3parcp"
+- description: 'Copy large files to, from, and between s3 buckets with parallelism'
+  github:
+    owner: chanzuckerberg
+    name: homebrew-tap
+  homepage: 'https://github.com/chanzuckerberg/s3parcp'
+  test: system "#{bin}/s3parcp --version"
+  install: |
+    bin.install "s3parcp"
+    bash_completion.install "completions/bash" => "s3parcp"
 
 nfpms:
   - 
@@ -36,8 +43,10 @@ nfpms:
 
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:
