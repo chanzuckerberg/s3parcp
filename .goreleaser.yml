@@ -27,6 +27,7 @@ brews:
   install: |
     bin.install "s3parcp"
     bash_completion.install "completions/bash" => "s3parcp"
+    zsh_completion.install "completions/zsh" => "_s3parcp"
 
 nfpms:
   - 
@@ -40,6 +41,7 @@ nfpms:
       - rpm
     files:
       'completions/bash': '/etc/bash_completion.d/s3parcp'
+      'completions/zsh': '/usr/share/zsh/functions/Completion/_s3parcp'
 
 checksum:
   name_template: 'checksums.txt'
