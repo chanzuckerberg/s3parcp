@@ -24,12 +24,15 @@ brews:
 nfpms:
   - 
     vendor: chanzuckerberg
+    maintainer: Todd Morse <todd@morsecodist.io>
     homepage: 'https://github.com/chanzuckerberg/s3parcp'
     description: 'Copy large files to, from, and between s3 buckets with parallelism'
     license: MIT
     formats:
       - deb
       - rpm
+    files:
+      'completion.sh': '/etc/bash_completion.d/s3parcp'
     scripts:
       postinstall: 'scripts/postinstall.sh'
       postremove: 'scripts/postremove.sh'
