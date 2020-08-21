@@ -51,7 +51,7 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 release:
-  prerelease: "{{ .Env.PRERELEASE  }}"
+  prerelease: {{ .Env.PRERELEASE == "true" }}
 
 changelog:
   sort: asc
