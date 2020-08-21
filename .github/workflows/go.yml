@@ -48,4 +48,6 @@ jobs:
         version: latest
         args: release --rm-dist
       env:
-        GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
+        PRERELEASE: ${{ github.event.release.prerelease }}

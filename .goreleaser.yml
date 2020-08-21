@@ -6,6 +6,9 @@ builds:
 - env:
   - CGO_ENABLED=0
 
+release:
+  prerelease: {{ .Env.PRERELEASE }}
+
 archives:
   files:
     - LICENSE
@@ -13,11 +16,12 @@ archives:
     - completions/**/*
 
 brews:
-- description: 'Copy large files to, from, and between s3 buckets with parallelism'
+- description: "Copy large files to, from, and between s3 buckets with parallelism"
   github:
     owner: chanzuckerberg
     name: homebrew-tap
-  homepage: 'https://github.com/chanzuckerberg/s3parcp'
+    token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+  homepage: "https://github.com/chanzuckerberg/s3parcp"
   test: system "#{bin}/s3parcp --version"
   install: |
     bin.install "s3parcp"
@@ -28,18 +32,18 @@ nfpms:
   - 
     vendor: chanzuckerberg
     maintainer: Todd Morse <todd@morsecodist.io>
-    homepage: 'https://github.com/chanzuckerberg/s3parcp'
-    description: 'Copy large files to, from, and between s3 buckets with parallelism'
+    homepage: "https://github.com/chanzuckerberg/s3parcp"
+    description: "Copy large files to, from, and between s3 buckets with parallelism"
     license: MIT
     formats:
       - deb
       - rpm
     files:
-      'completions/bash': '/etc/bash_completion.d/s3parcp'
-      'completions/zsh': '/usr/share/zsh/functions/Completion/_s3parcp'
+      "completions/bash": "/etc/bash_completion.d/s3parcp"
+      "completions/zsh": "/usr/share/zsh/functions/Completion/_s3parcp"
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 
 snapshot:
   name_template: "{{ .Tag }}-next"
@@ -48,5 +52,5 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+    - "^docs:"
+    - "^test:"
