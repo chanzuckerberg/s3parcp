@@ -6,11 +6,15 @@ builds:
 - env:
   - CGO_ENABLED=0
 
+release:
+  prerelease: {{ .Env.PRERELEASE }}
+
 archives:
-  files:
-    - LICENSE
-    - README.md
-    - completions/**/*
+  -
+    files:
+      - LICENSE
+      - README.md
+      - completions/**/*
 
 brews:
 - description: "Copy large files to, from, and between s3 buckets with parallelism"
