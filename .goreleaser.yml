@@ -7,7 +7,7 @@ builds:
   - CGO_ENABLED=0
 
 release:
-  prerelease: {{.Env.PRERELEASE}}
+  prerelease: "{{ .Env.PRERELEASE }}"
 
 archives:
   files:
