@@ -50,6 +50,9 @@ checksum:
 snapshot:
   name_template: "{{ .Tag }}-next"
 
+release:
+  prerelease: {{ .Env.PRERELEASE }}
+
 changelog:
   sort: asc
   filters:
