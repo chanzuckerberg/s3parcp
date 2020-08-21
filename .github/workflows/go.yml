@@ -43,11 +43,19 @@ jobs:
 
     - name: Release
       uses: goreleaser/goreleaser-action@v2
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: startsWith(github.ref, 'refs/tags/v') and !github.event.release.prerelease
       with:
         version: latest
         args: release --rm-dist
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
-        PRERELEASE: "${{ github.event.release.prerelease }}"
+
+    - name: Prerelease
+      uses: goreleaser/goreleaser-action@v2
+      if: startsWith(github.ref, 'refs/tags/v') and github.event.release.prerelease
+      with:
+        version: latest
+        args: release --rm-dist -f .goreleaser.prerelease.yml
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
