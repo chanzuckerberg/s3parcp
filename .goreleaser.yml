@@ -6,9 +6,6 @@ builds:
 - env:
   - CGO_ENABLED=0
 
-release:
-  prerelease: "{{ .Env.PRERELEASE }}"
-
 archives:
   files:
     - LICENSE
@@ -17,7 +14,7 @@ archives:
 
 brews:
 - description: "Copy large files to, from, and between s3 buckets with parallelism"
-  github:
+  tap:
     owner: chanzuckerberg
     name: homebrew-tap
     token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
