@@ -1,8 +1,9 @@
-name: Release
+name: Check
 
 on:
   push:
     branches:
+    tags-ignore:
   pull_request:
 
 jobs:
