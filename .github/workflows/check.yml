@@ -1,9 +1,8 @@
-name: Go
+name: Release
 
 on:
   push:
     branches:
-      - *
   pull_request:
 
 jobs:
