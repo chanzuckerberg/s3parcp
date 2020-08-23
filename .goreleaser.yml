@@ -11,6 +11,9 @@ builds:
   goarch:
     - amd64
 
+release:
+  prerelease: {{ .Env.PRERELEASE }}
+
 archives:
   - files:
     - LICENSE

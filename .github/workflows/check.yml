@@ -2,14 +2,14 @@ name: Go
 
 on:
   push:
+    branches:
+      - *
   pull_request:
-  release:
-    types: [published, edited, released]
 
 jobs:
 
-  Go:
-    name: Go
+  Check:
+    name: Check
     runs-on: ubuntu-latest
     steps:
 
@@ -42,13 +42,3 @@ jobs:
       run: |
         go mod tidy
         git diff --exit-code
-
-    - name: Release
-      uses: goreleaser/goreleaser-action@v2
-      if: startsWith(github.ref, 'refs/tags/v') && !github.event.release.prerelease
-      with:
-        version: latest
-        args: release --rm-dist
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
