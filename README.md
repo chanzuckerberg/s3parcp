@@ -10,22 +10,43 @@ This project is still in pre-release. There are some issues and features I would
 
 #### Debian (Ubuntu/Mint)
 
-#### Fedora (RHEL/CentOS)
-
-#### Other Linux
+Download and install the `.deb`:
 
 ```bash
-# Update based on your platform
-PLATFORM=#Darwin_i386/Darwin_x86_64/Linux_i386/Linux_x86_64
-VERSION=0.2.1-alpha
-curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/latest/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
-mv s3parcp ~/.local/bin
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb -o s3parcp.deb
+sudo dpkg -i s3parcp.deb
+rm s3parcp.deb
 ```
+
+#### Fedora (RHEL/CentOS)
+
+Download and install the `.rpm`:
+
+```bash
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm -o s3parcp.deb
+sudo rpm -i s3parcp.rpm
+rm s3parcp.rpm
+```
+
 ### MacOS
+
+Install via homebrew:
 
 ```bash
 brew tap chanzuckerberg/tap
 brew install s3parcp
+```
+
+### Binary
+
+Download the appropriate binary for your platform:
+
+```bash
+PLATFORM=#linux,darwin
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz | tar zx
 ```
 
 ### Windows
