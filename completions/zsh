@@ -1,0 +1,9 @@
+#compdef _s3parcp s3parcp
+
+_s3parcp() {
+    local -a completions
+    args=("${words[@]:1}")
+    local IFS=$'\n'
+    completions=($(GO_FLAGS_COMPLETION=1 ${words[1]} "${args[@]}"))
+    compadd -a completions
+}

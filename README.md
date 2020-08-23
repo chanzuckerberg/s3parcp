@@ -1,4 +1,4 @@
-# s3parcp ![Go](https://github.com/chanzuckerberg/s3parcp/workflows/Go/badge.svg) [![codecov](https://codecov.io/gh/chanzuckerberg/s3parcp/branch/main/graph/badge.svg)](https://codecov.io/gh/chanzuckerberg/s3parcp) [![GitHub license](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://github.com/chanzuckerberg/idseq-web/blob/master/LICENSE) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
+# s3parcp [![Latest Version](https://img.shields.io/github/release/chanzuckerberg/s3parcp.svg?style=flat?maxAge=86400)](https://github.com/chanzuckerberg/s3parcp/releases) ![Check](https://github.com/chanzuckerberg/s3parcp/workflows/Check/badge.svg) [![codecov](https://codecov.io/gh/chanzuckerberg/s3parcp/branch/main/graph/badge.svg)](https://codecov.io/gh/chanzuckerberg/s3parcp) [![GitHub license](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://github.com/chanzuckerberg/idseq-web/blob/master/LICENSE) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)
 
 s3parcp is a CLI wrapper around [AWS's Go SDK's Downloader](https://docs.aws.amazon.com/sdk-for-go/api/service/s3/s3manager/#NewDownloader). This downloader provides a chunked parallel download implementation from s3 offering speeds faster than [s3cp](https://github.com/aboisvert/s3cp). The API is inspired by `cp`.
 
@@ -6,16 +6,56 @@ This project is still in pre-release. There are some issues and features I would
 
 ## Installation
 
-Unfortunately, Windows is not yet supported.
+### Linux
+
+#### Debian (Ubuntu/Mint)
+
+Download and install the `.deb`:
 
 ```bash
-# Update based on your platform
-PLATFORM=#Darwin_i386/Darwin_x86_64/Linux_i386/Linux_x86_64
-VERSION=0.2.1-alpha
-RELEASES=https://github.com/chanzuckerberg/s3parcp/releases/download
-curl -L $RELEASES/v$VERSION/s3parcp_"$VERSION"_$PLATFORM.tar.gz | tar zx
-mv s3parcp ~/.local/bin
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb \
+  -o s3parcp.deb
+sudo dpkg -i s3parcp.deb
+rm s3parcp.deb
 ```
+
+#### Fedora (RHEL/CentOS)
+
+Download and install the `.rpm`:
+
+```bash
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm \
+  -o s3parcp.deb
+sudo rpm -i s3parcp.rpm
+rm s3parcp.rpm
+```
+
+### MacOS
+
+Install via homebrew:
+
+```bash
+brew tap chanzuckerberg/tap
+brew install s3parcp
+```
+
+### Binary
+
+Download the appropriate binary for your platform:
+
+```bash
+PLATFORM=#linux,darwin
+VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
+curl -L \
+  https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz \
+  | tar zx
+```
+
+### Windows
+
+Unfortunately, due to difficulty with mmap compatibility, Windows is not yet supported. If you want to use s3parcp on Windows 10 I recommend [Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10). Once you have set this up you can install with the instructions for the Linux distribution you chose. There is currently an open [issue](https://github.com/chanzuckerberg/s3parcp/issues/20) to track this. If this feature is important to you please comment or react on the issue, or make a PR for it.
 
 ## Usage
 
@@ -32,7 +72,8 @@ Application Options:
   -m, --mmap         Use mmap for downloads
   -r, --recursive    Copy directories or folders recursively
       --version      Print the current version
-      --s3_url=      A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)
+      --s3_url=      A custom s3 API url (also available as an environment
+                       variable 'S3PARCP_S3_URL', the flag takes precedence)
       --max-retries= Max per chunk retries
       --disable-ssl  Disable SSL
   -v, --verbose      verbose logging

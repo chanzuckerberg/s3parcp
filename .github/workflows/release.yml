@@ -1,13 +1,13 @@
-name: Go
+name: Release
 
 on:
-  push:
-  pull_request:
+  release:
+    types: [created]
 
 jobs:
 
-  Go:
-    name: Go
+  Release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
 
@@ -23,13 +23,8 @@ jobs:
     - name: Get dependencies
       run: go get -v -t -d ./...
 
-    - name: Build
-      run: go build
-
     - name: Test
-      run: |
-        go test -coverprofile=coverage.txt -covermode=atomic ./...
-        bash <(curl -s https://codecov.io/bash)
+      run: go test ./...
 
     - name: Lint
       uses: golangci/golangci-lint-action@v1
@@ -43,9 +38,19 @@ jobs:
 
     - name: Release
       uses: goreleaser/goreleaser-action@v2
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: "!github.event.release.prerelease"
       with:
         version: latest
         args: release --rm-dist
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
+
+    - name: Prerelease
+      uses: goreleaser/goreleaser-action@v2
+      if: "github.event.release.prerelease"
+      with:
+        version: latest
+        args: release --rm-dist -f .goreleaser.prerelease.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

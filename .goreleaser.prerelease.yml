@@ -1,0 +1,34 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+- env:
+  - CGO_ENABLED=0
+  goos:
+    - darwin
+    - linux
+  goarch:
+    - amd64
+
+release:
+  prerelease: true
+
+archives:
+  - files:
+    - LICENSE
+    - README.md
+    - completions/**/*
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - "^docs:"
+    - "^test:"
