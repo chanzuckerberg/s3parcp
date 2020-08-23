@@ -54,4 +54,3 @@ jobs:
         args: release --rm-dist -f .goreleaser.prerelease.yml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.CZIBUILDBOT_GITHUB_KEY }}
