@@ -14,7 +14,8 @@ Download and install the `.deb`:
 
 ```bash
 VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
-curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb -o s3parcp.deb
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb \
+  -o s3parcp.deb
 sudo dpkg -i s3parcp.deb
 rm s3parcp.deb
 ```
@@ -25,7 +26,8 @@ Download and install the `.rpm`:
 
 ```bash
 VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
-curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm -o s3parcp.deb
+curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm \
+  -o s3parcp.deb
 sudo rpm -i s3parcp.rpm
 rm s3parcp.rpm
 ```
@@ -46,7 +48,9 @@ Download the appropriate binary for your platform:
 ```bash
 PLATFORM=#linux,darwin
 VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp/releases/latest | jq -r .name | sed s/^v//)
-curl -L https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz | tar zx
+curl -L \
+  https://github.com/chanzuckerberg/s3parcp/releases/download/v${VERSION}/s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz \
+  | tar zx
 ```
 
 ### Windows
@@ -68,7 +72,8 @@ Application Options:
   -m, --mmap         Use mmap for downloads
   -r, --recursive    Copy directories or folders recursively
       --version      Print the current version
-      --s3_url=      A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)
+      --s3_url=      A custom s3 API url (also available as an environment
+                       variable 'S3PARCP_S3_URL', the flag takes precedence)
       --max-retries= Max per chunk retries
       --disable-ssl  Disable SSL
   -v, --verbose      verbose logging
