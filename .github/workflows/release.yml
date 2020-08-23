@@ -38,7 +38,7 @@ jobs:
 
     - name: Release
       uses: goreleaser/goreleaser-action@v2
-      if: !github.event.release.prerelease
+      if: "!github.event.release.prerelease"
       with:
         version: latest
         args: release --rm-dist
