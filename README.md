@@ -14,11 +14,9 @@ Download and install the `.deb`:
 
 ```bash
 RELEASES=chanzuckerberg/s3parcp/releases
-VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
-  jq -r .name | sed s/^v//)
-curl -L \
-  https://github.com/${RELEASES}/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb \
-  -o s3parcp.deb
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | jq -r .name | sed s/^v//)
+DOWNLOAD=$(s3parcp_${VERSION}_linux_amd64.deb)
+curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} -o s3parcp.deb
 sudo dpkg -i s3parcp.deb
 rm s3parcp.deb
 ```
@@ -29,11 +27,9 @@ Download and install the `.rpm`:
 
 ```bash
 RELEASES=chanzuckerberg/s3parcp/releases
-VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
-  jq -r .name | sed s/^v//)
-curl -L \
-  https://github.com/${RELEASES}/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm \
-  -o s3parcp.rpm
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | jq -r .name | sed s/^v//)
+DOWNLOAD=$(s3parcp_${VERSION}_linux_amd64.rom)
+curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} -o s3parcp.rpm
 sudo rpm -i s3parcp.rpm
 rm s3parcp.rpm
 ```
@@ -54,11 +50,9 @@ Download the appropriate binary for your platform:
 ```bash
 RELEASES=chanzuckerberg/s3parcp/releases
 PLATFORM=#linux,darwin
-VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
-  jq -r .name | sed s/^v//)
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | jq -r .name | sed s/^v//)
 DOWNLOAD=s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz
-curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} \
-  | tar zx
+curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} | tar zx
 ```
 
 ### Windows
