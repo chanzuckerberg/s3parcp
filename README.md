@@ -13,10 +13,11 @@ This project is still in pre-release. There are some issues and features I would
 Download and install the `.deb`:
 
 ```bash
-VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp\
-/releases/latest | jq -r .name | sed s/^v//)
-curl -L https://github.com/chanzuckerberg/s3parcp\
-/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb \
+RELEASES=chanzuckerberg/s3parcp/releases
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
+  jq -r .name | sed s/^v//)
+curl -L \
+  https://github.com/${RELEASES}/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.deb \
   -o s3parcp.deb
 sudo dpkg -i s3parcp.deb
 rm s3parcp.deb
@@ -27,11 +28,12 @@ rm s3parcp.deb
 Download and install the `.rpm`:
 
 ```bash
-VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp\
-/releases/latest | jq -r .name | sed s/^v//)
-curl -L https://github.com/chanzuckerberg/s3parcp\
-/releases/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm \
-  -o s3parcp.deb
+RELEASES=chanzuckerberg/s3parcp/releases
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
+  jq -r .name | sed s/^v//)
+curl -L \
+  https://github.com/${RELEASES}/download/v${VERSION}/s3parcp_${VERSION}_linux_amd64.rpm \
+  -o s3parcp.rpm
 sudo rpm -i s3parcp.rpm
 rm s3parcp.rpm
 ```
@@ -50,12 +52,12 @@ brew install s3parcp
 Download the appropriate binary for your platform:
 
 ```bash
+RELEASES=chanzuckerberg/s3parcp/releases
 PLATFORM=#linux,darwin
-VERSION=$(curl https://api.github.com/repos/chanzuckerberg/s3parcp\
-/releases/latest | jq -r .name | sed s/^v//)
-curl -L \
-  https://github.com/chanzuckerberg/s3parcp\
-/releases/download/v${VERSION}/s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz \
+VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | \
+  jq -r .name | sed s/^v//)
+DOWNLOAD=s3parcp_${VERSION}_${PLATFORM}_amd64.tar.gz
+curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} \
   | tar zx
 ```
 
