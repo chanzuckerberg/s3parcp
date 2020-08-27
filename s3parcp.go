@@ -57,9 +57,11 @@ func main() {
 			},
 		))
 	}
-	sess.Config.Credentials = credentials.NewCredentials(&cachedcredentials.FileCacheProvider{
-		Creds: sess.Config.Credentials,
-	})
+	if !opts.DisableCachedCredentials {
+		sess.Config.Credentials = credentials.NewCredentials(&cachedcredentials.FileCacheProvider{
+			Creds: sess.Config.Credentials,
+		})
+	}
 
 	client := s3.New(sess)
 
