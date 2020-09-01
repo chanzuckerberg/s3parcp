@@ -81,7 +81,6 @@ func main() {
 		BufferSize:  opts.BufferSize,
 		Checksum:    opts.Checksum,
 		Concurrency: opts.Concurrency,
-		Mmap:        opts.Mmap,
 		DisableSSL:  opts.DisableSSL,
 		MaxRetries:  opts.MaxRetries,
 		PartSize:    opts.PartSize,
