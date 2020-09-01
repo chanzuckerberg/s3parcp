@@ -1,4 +1,4 @@
-package cachedcredentials
+package filecachedcredentials
 
 import (
 	"encoding/json"
@@ -6,15 +6,21 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"syscall"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
+type credentialsGetter interface {
+	ExpiresAt() (time.Time, error)
+	Get() (credentials.Value, error)
+	IsExpired() bool
+}
+
 // FileCacheProvider provides credentials from a file cache with a fallback
 type FileCacheProvider struct {
-	Creds *credentials.Credentials
+	credentials credentialsGetter
+	cacheHome   string
 }
 
 type cachedCredentials struct {
@@ -40,42 +46,17 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 		return err
 	}
 
-	fd, err := syscall.Open(cacheFilename, syscall.O_CREAT|syscall.O_RDWR, 0600)
-	defer syscall.Close(fd)
+	tmp, err := ioutil.TempFile(path.Dir(cacheFilename), "tmp-credentials-cache-")
 	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while opening credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
 		return err
 	}
 
-	err = syscall.Flock(fd, syscall.LOCK_EX)
+	err = ioutil.WriteFile(tmp.Name(), data, os.ModePerm)
 	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while requesting a lock on credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
 		return err
 	}
 
-	_, writeErr := syscall.Write(fd, data)
-
-	err = syscall.Flock(fd, syscall.LOCK_UN)
-
-	if writeErr != nil {
-		message := fmt.Sprintf("Error: encountered error while writing credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
-		return writeErr
-	}
-
-	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while unlocking credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
-		return err
-	}
-
-	return nil
+	return os.Rename(tmp.Name(), cacheFilename)
 }
 
 func readCacheFile(cacheFilename string) (cachedCredentials, error) {
@@ -98,7 +79,7 @@ func readCacheFile(cacheFilename string) (cachedCredentials, error) {
 }
 
 func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCredentials, error) {
-	credentials, err := f.Creds.Get()
+	credentials, err := f.credentials.Get()
 	if err != nil {
 		message := "Encountered error while fetching credentials\n"
 		os.Stderr.WriteString(message)
@@ -106,7 +87,7 @@ func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCred
 		return cachedCredentials{}, err
 	}
 
-	expiresAt, expirationError := f.Creds.ExpiresAt()
+	expiresAt, expirationError := f.credentials.ExpiresAt()
 
 	cachedCreds := cachedCredentials{
 		AccessKeyID:     credentials.AccessKeyID,
@@ -119,24 +100,31 @@ func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCred
 	// If we get an error fetching the expiry don't save credentials
 	//   but still return new credentials. If they were saved they
 	//   would just be expired the next time so no point in saving them.
-	if expirationError != nil {
+	if expirationError == nil {
 		err = writeCacheFile(cacheFilename, cachedCreds)
 	}
 	return cachedCreds, err
 }
 
-// Retrieve retrieves credentials
-func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
+// NewFileCacheProvider creates a new FileCacheProvider with the os.UserCacheDir as the cacheHome
+func NewFileCacheProvider(credentials credentialsGetter) (FileCacheProvider, error) {
 	cacheHome, err := os.UserCacheDir()
 	if err != nil {
 		message := "Error: encountered error while getting user cache directory\n"
 		os.Stderr.WriteString(message)
 		os.Stderr.WriteString(err.Error() + "\n")
-		return credentials.Value{}, err
 	}
 
-	cacheDir := path.Join(cacheHome, "s3parcp")
-	err = os.MkdirAll(cacheDir, os.ModePerm)
+	return FileCacheProvider{
+		credentials: credentials,
+		cacheHome:   cacheHome,
+	}, err
+}
+
+// Retrieve retrieves credentials
+func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
+	cacheDir := path.Join(f.cacheHome, "s3parcp")
+	err := os.MkdirAll(cacheDir, os.ModePerm)
 	if err != nil {
 		return credentials.Value{}, err
 	}
@@ -178,5 +166,5 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 
 // IsExpired checks if the credentials are expired
 func (f *FileCacheProvider) IsExpired() bool {
-	return f.Creds.IsExpired()
+	return f.credentials.IsExpired()
 }

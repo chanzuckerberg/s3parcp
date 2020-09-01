@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/chanzuckerberg/s3parcp/cachedcredentials"
+	"github.com/chanzuckerberg/s3parcp/filecachedcredentials"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
@@ -58,9 +58,15 @@ func main() {
 		))
 	}
 	if !opts.DisableCachedCredentials {
-		sess.Config.Credentials = credentials.NewCredentials(&cachedcredentials.FileCacheProvider{
-			Creds: sess.Config.Credentials,
-		})
+		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(sess.Config.Credentials)
+		if err != nil {
+			message := "s3parcp encountered error while setting up cached credentials\n"
+			message += "Try running with --disable-cached-credentials\n"
+			os.Stderr.WriteString(message)
+			os.Exit(1)
+		}
+
+		sess.Config.Credentials = credentials.NewCredentials(&fileCacheProvider)
 	}
 
 	client := s3.New(sess)
