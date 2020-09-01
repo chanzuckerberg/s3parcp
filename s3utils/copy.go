@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/chanzuckerberg/crc-squared/crcsquared"
-	"github.com/chanzuckerberg/s3parcp/mmap"
 	"github.com/chanzuckerberg/s3parcp/s3checksum"
 )
 
@@ -104,7 +103,6 @@ type CopierOptions struct {
 	Checksum    bool
 	Concurrency int
 	DisableSSL  bool
-	Mmap        bool
 	MaxRetries  int
 	PartSize    int64
 	Verbose     bool
@@ -161,9 +159,9 @@ func NewCopier(opts CopierOptions, sess *session.Session) Copier {
 }
 
 func (c *Copier) download(bucket string, key string, dest string) error {
-	// Only get object info if mmap or checksum is enabled
+	// Only get object info if checksum is enabled
 	var headObjectResponse *s3.HeadObjectOutput
-	if c.Options.Mmap || c.Options.Checksum {
+	if c.Options.Checksum {
 		headObjectInput := s3.HeadObjectInput{
 			Bucket: aws.String(bucket),
 			Key:    aws.String(key),
@@ -186,37 +184,21 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		return fmt.Errorf("while creating directory: %s encountered error: %s", path.Dir(dest), err)
 	}
 
-	// TODO make an mmap API that is compatible with os.File to avoid this branching
-	// https://github.com/chanzuckerberg/s3parcp/issues/27
-	if c.Options.Mmap {
-		file, err := mmap.CreateFile(dest, *headObjectResponse.ContentLength)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+	file, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-		_, err = c.Downloader.Download(file, &getObjectInput)
-		if err != nil {
-			return err
-		}
-	} else {
-		file, err := os.Create(dest)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		_, err = c.Downloader.Download(file, &getObjectInput)
-		if err != nil {
-			return err
-		}
+	_, err = c.Downloader.Download(file, &getObjectInput)
+	if err != nil {
+		return err
 	}
 
 	if c.Options.Checksum {
 		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
 			Concurrency: c.Options.Concurrency,
 			PartSize:    c.Options.PartSize,
-			Mmap:        c.Options.Mmap,
 		}
 		expectedChecksum, err := s3checksum.GetCRC32CChecksum(headObjectResponse)
 		if err != nil {
@@ -248,7 +230,6 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
 			Concurrency: c.Options.Concurrency,
 			PartSize:    c.Options.PartSize,
-			Mmap:        c.Options.Mmap,
 		}
 		crc32cChecksum, err := crcsquared.ParallelCRC32CChecksumFile(src, parallelChecksumFileOptions)
 		if err != nil {
@@ -257,32 +238,16 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
 	}
 
-	// TODO make an mmap API that is compatible with os.File to avoid this branching
-	// https://github.com/chanzuckerberg/s3parcp/issues/27
-	if c.Options.Mmap {
-		file, err := mmap.OpenFile(src)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
+	file, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
-		uploadInput.Body = file
-		_, err = c.Uploader.Upload(&uploadInput)
-		if err != nil {
-			return err
-		}
-	} else {
-		file, err := os.Open(src)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		uploadInput.Body = file
-		_, err = c.Uploader.Upload(&uploadInput)
-		if err != nil {
-			return err
-		}
+	uploadInput.Body = file
+	_, err = c.Uploader.Upload(&uploadInput)
+	if err != nil {
+		return err
 	}
 
 	return nil
