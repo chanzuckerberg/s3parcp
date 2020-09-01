@@ -2,8 +2,8 @@ package filecachedcredentials
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"time"
@@ -11,7 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
-type credentialsGetter interface {
+// awsCredentials is an interface with the required functions from credentials.credentials.
+// An interface version is required for mocking
+type awsCredentials interface {
 	ExpiresAt() (time.Time, error)
 	Get() (credentials.Value, error)
 	IsExpired() bool
@@ -19,7 +21,7 @@ type credentialsGetter interface {
 
 // FileCacheProvider provides credentials from a file cache with a fallback
 type FileCacheProvider struct {
-	credentials credentialsGetter
+	credentials awsCredentials
 	cacheHome   string
 }
 
@@ -31,6 +33,10 @@ type cachedCredentials struct {
 	SessionToken    string
 }
 
+func (c cachedCredentials) IsExpired() bool {
+	return c.ExpiresAt.Before(time.Now())
+}
+
 func fileExists(name string) (bool, error) {
 	_, err := os.Stat(name)
 	if os.IsNotExist(err) {
@@ -39,10 +45,15 @@ func fileExists(name string) (bool, error) {
 	return true, err
 }
 
+func (f *FileCacheProvider) cacheFilename() string {
+	return path.Join(f.cacheHome, "s3parcp", "credentials-cache.json")
+}
+
 // writeCacheFile writes cachedCredentials to a file atomically
-func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
+func saveCachedCredentials(cacheFilename string, cachedCreds cachedCredentials) error {
 	data, err := json.Marshal(cachedCreds)
 	if err != nil {
+
 		return err
 	}
 
@@ -59,60 +70,56 @@ func writeCacheFile(cacheFilename string, cachedCreds cachedCredentials) error {
 	return os.Rename(tmp.Name(), cacheFilename)
 }
 
-func readCacheFile(cacheFilename string) (cachedCredentials, error) {
+func loadCachedCredentials(cacheFilename string) (cachedCredentials, error) {
 	cachedCreds := cachedCredentials{}
 	bytes, err := ioutil.ReadFile(cacheFilename)
 	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while reading cached credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
+		log.Printf("error while reading cached credentials file %s - %s\n", cacheFilename, err)
 		return cachedCreds, err
 	}
 	err = json.Unmarshal(bytes, &cachedCreds)
 	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while parsing cached credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
+		log.Printf("error parsing cached credentials file %s - %s\n", cacheFilename, err)
 		return cachedCreds, err
 	}
 	return cachedCreds, nil
 }
 
-func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (cachedCredentials, error) {
-	credentials, err := f.credentials.Get()
+func (f *FileCacheProvider) refreshCredentials(cacheFilename string) (credentials.Value, error) {
+	newCredentials, err := f.credentials.Get()
 	if err != nil {
-		message := "Encountered error while fetching credentials\n"
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
-		return cachedCredentials{}, err
+		log.Printf("error while fetching credentials - %s", err)
+		return credentials.Value{}, err
 	}
 
-	expiresAt, expirationError := f.credentials.ExpiresAt()
+	expiresAt, err := f.credentials.ExpiresAt()
+
+	if err != nil {
+		log.Printf("error fetching credential expiry - %s, credentials will not be cached", err)
+		return newCredentials, nil
+	}
 
 	cachedCreds := cachedCredentials{
-		AccessKeyID:     credentials.AccessKeyID,
+		AccessKeyID:     newCredentials.AccessKeyID,
 		ExpiresAt:       expiresAt,
-		ProviderName:    credentials.ProviderName,
-		SecretAccessKey: credentials.SecretAccessKey,
-		SessionToken:    credentials.SessionToken,
+		ProviderName:    newCredentials.ProviderName,
+		SecretAccessKey: newCredentials.SecretAccessKey,
+		SessionToken:    newCredentials.SessionToken,
 	}
 
-	// If we get an error fetching the expiry don't save credentials
-	//   but still return new credentials. If they were saved they
-	//   would just be expired the next time so no point in saving them.
-	if expirationError == nil {
-		err = writeCacheFile(cacheFilename, cachedCreds)
+	err = writeCacheFile(cacheFilename, cachedCreds)
+	if err != nil {
+		log.Printf("error writing credential cache file - %s, credentials will not be cached", err)
 	}
-	return cachedCreds, err
+
+	return newCredentials, nil
 }
 
 // NewFileCacheProvider creates a new FileCacheProvider with the os.UserCacheDir as the cacheHome
-func NewFileCacheProvider(credentials credentialsGetter) (FileCacheProvider, error) {
+func NewFileCacheProvider(credentials awsCredentials) (FileCacheProvider, error) {
 	cacheHome, err := os.UserCacheDir()
 	if err != nil {
-		message := "Error: encountered error while getting user cache directory\n"
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
+		log.Printf("error getting user cache directory - %s", err)
 	}
 
 	return FileCacheProvider{
@@ -131,37 +138,28 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 
 	cacheFilename := path.Join(cacheDir, "credentials-cache.json")
 
-	useCache, err := fileExists(cacheFilename)
+	cacheFileExists, err := fileExists(cacheFilename)
 	if err != nil {
-		message := fmt.Sprintf("Error: encountered error while checking for existence of cached credentials file %s\n", cacheFilename)
-		os.Stderr.WriteString(message)
-		os.Stderr.WriteString(err.Error() + "\n")
-		return credentials.Value{}, err
+		log.Printf("error while checking for existence of cached credentials file %s - %s, refreshing credentials", cacheFilename, err)
+	}
+	if err != nil || !cacheFileExists {
+		return f.refreshCredentials(cacheFilename)
 	}
 
-	cachedCreds := cachedCredentials{}
-
-	if useCache {
-		cachedCreds, err = readCacheFile(cacheFilename)
-		if err != nil {
-			message := "Warning: encountered error while reading cache file, ignoring and using fresh credentials\n"
-			os.Stderr.WriteString(message)
-		}
-		useCache = useCache && err == nil
+	cachedCreds, err := loadCachedCredentials(cacheFilename)
+	if err != nil {
+		log.Println("error loading cached credentials, refreshing credentials")
+	}
+	if err == nil && !cachedCreds.IsExpired() {
+		return credentials.Value{
+			AccessKeyID:     cachedCreds.AccessKeyID,
+			ProviderName:    cachedCreds.ProviderName,
+			SecretAccessKey: cachedCreds.SecretAccessKey,
+			SessionToken:    cachedCreds.SessionToken,
+		}, err
 	}
 
-	useCache = useCache && cachedCreds.ExpiresAt.After(time.Now())
-
-	if !useCache {
-		cachedCreds, err = f.refreshCredentials(cacheFilename)
-	}
-
-	return credentials.Value{
-		AccessKeyID:     cachedCreds.AccessKeyID,
-		ProviderName:    cachedCreds.ProviderName,
-		SecretAccessKey: cachedCreds.SecretAccessKey,
-		SessionToken:    cachedCreds.SessionToken,
-	}, err
+	return f.refreshCredentials(cacheFilename)
 }
 
 // IsExpired checks if the credentials are expired

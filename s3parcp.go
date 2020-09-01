@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -19,6 +20,8 @@ import (
 var version string = "unset"
 
 func main() {
+	log.SetPrefix("s3parcp: ")
+	log.SetFlags(0)
 	opts, err := options.ParseArgs(os.Args[1:])
 
 	// go-flags will handle any logging to the user, just exit on error
@@ -28,7 +31,7 @@ func main() {
 
 	if opts.Version {
 		fmt.Println(version)
-		os.Exit(0)
+		return
 	}
 
 	sess := session.Must(session.NewSessionWithOptions(
@@ -60,10 +63,7 @@ func main() {
 	if !opts.DisableCachedCredentials {
 		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(sess.Config.Credentials)
 		if err != nil {
-			message := "s3parcp encountered error while setting up cached credentials\n"
-			message += "Try running with --disable-cached-credentials\n"
-			os.Stderr.WriteString(message)
-			os.Exit(1)
+			log.Fatal("error while setting up cached credentials, try running with --disable-cached-credentials\n")
 		}
 
 		sess.Config.Credentials = credentials.NewCredentials(&fileCacheProvider)

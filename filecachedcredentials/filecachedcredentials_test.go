@@ -1,33 +1,40 @@
 package filecachedcredentials
 
 import (
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
-type credentialsMocker struct {
+type credentialsMock struct {
 	credentialsValue credentials.Value
-	err              error
 	expiresAt        time.Time
-	expiresAtCalls   int
-	getCalls         int
-	isExpiredCalls   int
+
+	expiresAtErr error
+	getCallsErr  error
+
+	expiresAtCalls int
+	getCalls       int
+	isExpiredCalls int
 }
 
-func (c *credentialsMocker) ExpiresAt() (time.Time, error) {
+func (c *credentialsMock) ExpiresAt() (time.Time, error) {
 	c.expiresAtCalls++
-	return c.expiresAt, c.err
+	return c.expiresAt, c.expiresAtErr
 }
 
-func (c *credentialsMocker) Get() (credentials.Value, error) {
+func (c *credentialsMock) Get() (credentials.Value, error) {
 	c.getCalls++
-	return c.credentialsValue, c.err
+	return c.credentialsValue, c.getCallsErr
 }
 
-func (c *credentialsMocker) IsExpired() bool {
+func (c *credentialsMock) IsExpired() bool {
 	fmt.Println(c.isExpiredCalls)
 	c.isExpiredCalls++
 	fmt.Println(c.expiresAt)
@@ -35,8 +42,7 @@ func (c *credentialsMocker) IsExpired() bool {
 }
 
 func TestIsExpiredExpired(t *testing.T) {
-	c := credentialsMocker{
-		err:       nil,
+	c := credentialsMock{
 		expiresAt: time.Now(),
 	}
 
@@ -55,8 +61,7 @@ func TestIsExpiredExpired(t *testing.T) {
 }
 
 func TestIsExpiredFresh(t *testing.T) {
-	c := credentialsMocker{
-		err:       nil,
+	c := credentialsMock{
 		expiresAt: time.Now().Add(1 * time.Minute),
 	}
 
@@ -74,6 +79,117 @@ func TestIsExpiredFresh(t *testing.T) {
 	}
 }
 
-func TestCacheFileRaceCondition(t *testing.T) {
+func TestNewFileCachedCredentials(t *testing.T) {
+	creds := credentialsMock{}
+	fileCacheProvider, fileCacheProviderErr := NewFileCacheProvider(&creds)
+	cacheHome, cacheHomeErr := os.UserCacheDir()
 
+	if fileCacheProviderErr != nil && cacheHomeErr != nil {
+		return
+	}
+
+	if fileCacheProvider.cacheHome != cacheHome {
+		t.Errorf("expected fileCacheProvider.cacheHome to equal os.UserCacheDir but it was %s and os.UserCacheDir was %s", fileCacheProvider.cacheHome, cacheHome)
+	}
+
+	if fileCacheProviderErr != nil {
+		t.Errorf("NewFileCacheProvider should not error if os.UserCacheDir does not error but it errored with %s", fileCacheProviderErr)
+	}
+
+	if cacheHomeErr != nil {
+		t.Errorf("NewFileCacheProvider should error if os.UserCacheDir does but it did not error and os.UserCacheDir errored with with %s", cacheHomeErr)
+	}
+}
+
+func TestRetreiveEmptyCache(t *testing.T) {
+	creds := credentialsMock{
+		credentialsValue: credentials.Value{
+			AccessKeyID:     "dummy",
+			SecretAccessKey: "dummy",
+			SessionToken:    "dummy",
+			ProviderName:    "dummy",
+		},
+		expiresAt: time.Now().Add(1 * time.Minute),
+	}
+
+	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
+	defer os.RemoveAll(cacheHome)
+	if err != nil {
+		t.Errorf("encountered error while making temporary directory: %s", err)
+		t.FailNow()
+	}
+
+	fileCacheProvider := FileCacheProvider{
+		credentials: &creds,
+		cacheHome:   cacheHome,
+	}
+
+	credResults, _ := fileCacheProvider.Retrieve()
+
+	if credResults.AccessKeyID != "dummy" {
+		t.Error("asdasd")
+	}
+
+	cacheHomeItems, _ := ioutil.ReadDir(cacheHome)
+	cacheDir := cacheHomeItems[0]
+
+	if cacheDir.Name() != "s3parcp" || cacheDir.IsDir() == false {
+		t.Errorf("%s", cacheDir.Name())
+	}
+
+	cacheDirItems, _ := ioutil.ReadDir(path.Join(cacheHome, cacheDir.Name()))
+	cacheFile := cacheDirItems[0]
+
+	if cacheFile.Name() != "credentials-cache.json" {
+		t.Error(cacheFile.Name())
+	}
+
+	fileCacheProvider.Retrieve()
+
+	ioutil.WriteFile(path.Join(cacheHome, cacheDir.Name(), cacheFile.Name()), []byte("junk"), os.ModePerm)
+	fileCacheProvider.Retrieve()
+}
+
+func TestRetreiveEmptyCacheExpiresAtError(t *testing.T) {
+	creds := credentialsMock{
+		credentialsValue: credentials.Value{
+			AccessKeyID:     "dummy",
+			SecretAccessKey: "dummy",
+			SessionToken:    "dummy",
+			ProviderName:    "dummy",
+		},
+		expiresAt:    time.Now(),
+		expiresAtErr: errors.New("dummy"),
+	}
+
+	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
+	defer os.RemoveAll(cacheHome)
+	if err != nil {
+		t.Errorf("encountered error while making temporary directory: %s", err)
+		t.FailNow()
+	}
+
+	fileCacheProvider := FileCacheProvider{
+		credentials: &creds,
+		cacheHome:   cacheHome,
+	}
+
+	credResults, _ := fileCacheProvider.Retrieve()
+
+	if credResults.AccessKeyID != "dummy" {
+		t.Error("asdasd")
+	}
+
+	cacheHomeItems, _ := ioutil.ReadDir(cacheHome)
+	cacheDir := cacheHomeItems[0]
+
+	if cacheDir.Name() != "s3parcp" || cacheDir.IsDir() == false {
+		t.Errorf("%s", cacheDir.Name())
+	}
+
+	cacheDirItems, _ := ioutil.ReadDir(path.Join(cacheHome, cacheDir.Name()))
+
+	if len(cacheDirItems) > 0 {
+		t.Error("asdasdasd")
+	}
 }
