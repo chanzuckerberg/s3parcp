@@ -63,7 +63,7 @@ func main() {
 	if !opts.DisableCachedCredentials {
 		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(sess.Config.Credentials)
 		if err != nil {
-			log.Fatal("error while setting up cached credentials, try running with --disable-cached-credentials\n")
+			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
 		}
 
 		sess.Config.Credentials = credentials.NewCredentials(&fileCacheProvider)
@@ -96,25 +96,22 @@ func main() {
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "AccessDenied") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: access denied\n")
+			log.Println("error received from the s3 api - access denied")
 		} else if strings.HasPrefix(err.Error(), "NoSuchBucket") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: no such bucket\n")
+			log.Println("no such bucket")
 		} else if strings.HasPrefix(err.Error(), "MissingRegion") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: missing region configuration\n")
+			log.Println("missing region configuration")
 		} else {
-			os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+			log.Printf("%s\n", err)
 		}
 		os.Exit(1)
 	}
 	if len(jobs) == 0 && !opts.Recursive {
-		message := fmt.Sprintf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
-		os.Stderr.WriteString(message)
-		os.Exit(1)
+		log.Fatalf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
 	}
 
 	err = copier.CopyAll(jobs)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+		log.Fatalf("%s\n", err)
 	}
 }
