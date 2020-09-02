@@ -31,12 +31,19 @@ jobs:
         go test -coverprofile=coverage.txt -covermode=atomic ./...
         bash <(curl -s https://codecov.io/bash)
 
-    - name: Lint
-      uses: golangci/golangci-lint-action@v1
-      with:
-        version: v1.29
-
     - name: Deps
       run: |
         go mod tidy
         git diff --exit-code
+
+  Lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v1
+      with:
+        version: v1.29
