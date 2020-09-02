@@ -128,7 +128,7 @@ func TestRetreiveCachingFresh(t *testing.T) {
 
 	credResults, err := fileCacheProvider.Retrieve()
 	if err != nil {
-		t.Fatalf("fileCacheProvider.Retrieve returned non nil error - %s\n", err)
+		t.Fatalf("fileCacheProvider.Retrieve returned non nil error - %s", err)
 	}
 
 	if credResults.AccessKeyID != creds.credentialsValue.AccessKeyID {
@@ -204,7 +204,7 @@ func TestRetreiveCachingCached(t *testing.T) {
 	}
 	defer (func() {
 		if os.RemoveAll(cacheHome) != nil {
-			t.Logf("failed to remove %s\n", cacheHome)
+			t.Logf("failed to remove %s", cacheHome)
 		}
 	})()
 
@@ -215,7 +215,7 @@ func TestRetreiveCachingCached(t *testing.T) {
 
 	_, err = fileCacheProvider.Retrieve()
 	if err != nil {
-		t.Fatalf("fileCacheProvider.Retrieve returned non nil error - %s\n", err)
+		t.Fatalf("fileCacheProvider.Retrieve returned non nil error on first call - %s", err)
 	}
 	if creds.getCalls != 1 {
 		t.Errorf("fileCacheProvider.Retrieve should call Get on the credentials API exactly once with no cache but it was called %d times", creds.getCalls)
@@ -224,6 +224,9 @@ func TestRetreiveCachingCached(t *testing.T) {
 	_, err = fileCacheProvider.Retrieve()
 	if creds.getCalls != 1 {
 		t.Errorf("fileCacheProvider.Retrieve should call Get on the credentials API exactly once with no cache but it was called %d times", creds.getCalls)
+	}
+	if err != nil {
+		t.Errorf("fileCacheProvider.Retrieve returned non nil error on second call - %s", err)
 	}
 }
 
@@ -260,6 +263,9 @@ func TestRetreiveCachingFileError(t *testing.T) {
 	_, err = fileCacheProvider.Retrieve()
 	if creds.getCalls != 2 {
 		t.Error("expected fileCacheProvider.Retrieve to refresh credentials if credentials file is invalid")
+	}
+	if err != nil {
+		t.Errorf("fileCacheProvider.Retrieve returned non nil error on second call - %s", err)
 	}
 }
 
