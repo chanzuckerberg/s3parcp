@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/chanzuckerberg/s3parcp/cachedcredentials"
+	"github.com/chanzuckerberg/s3parcp/filecachedcredentials"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
 )
@@ -19,6 +20,8 @@ import (
 var version string = "unset"
 
 func main() {
+	log.SetPrefix("s3parcp: ")
+	log.SetFlags(0)
 	opts, err := options.ParseArgs(os.Args[1:])
 
 	// go-flags will handle any logging to the user, just exit on error
@@ -28,7 +31,7 @@ func main() {
 
 	if opts.Version {
 		fmt.Println(version)
-		os.Exit(0)
+		return
 	}
 
 	sess := session.Must(session.NewSessionWithOptions(
@@ -58,9 +61,12 @@ func main() {
 		))
 	}
 	if !opts.DisableCachedCredentials {
-		sess.Config.Credentials = credentials.NewCredentials(&cachedcredentials.FileCacheProvider{
-			Creds: sess.Config.Credentials,
-		})
+		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(sess.Config.Credentials)
+		if err != nil {
+			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
+		}
+
+		sess.Config.Credentials = credentials.NewCredentials(&fileCacheProvider)
 	}
 
 	client := s3.New(sess)
@@ -90,25 +96,22 @@ func main() {
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "AccessDenied") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: access denied\n")
+			log.Println("error received from the s3 api - access denied")
 		} else if strings.HasPrefix(err.Error(), "NoSuchBucket") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: no such bucket\n")
+			log.Println("no such bucket")
 		} else if strings.HasPrefix(err.Error(), "MissingRegion") {
-			os.Stderr.WriteString("s3parcp encountered an error from the s3 api: missing region configuration\n")
+			log.Println("missing region configuration")
 		} else {
-			os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
+			log.Printf("%s\n", err)
 		}
 		os.Exit(1)
 	}
 	if len(jobs) == 0 && !opts.Recursive {
-		message := fmt.Sprintf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
-		os.Stderr.WriteString(message)
-		os.Exit(1)
+		log.Fatalf("no %s found at path %s\n", sourcePath.FileOrObject(), sourcePath)
 	}
 
 	err = copier.CopyAll(jobs)
 	if err != nil {
-		os.Stderr.WriteString(fmt.Sprintf("%s\n", err))
-		os.Exit(1)
+		log.Fatalf("%s\n", err)
 	}
 }
