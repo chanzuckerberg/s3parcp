@@ -257,8 +257,14 @@ func TestRetreiveCachingFileError(t *testing.T) {
 	}
 
 	_, err = fileCacheProvider.Retrieve()
+	if err != nil {
+		t.Errorf("fileCacheProvider.Retrieve returned non nil error on first call - %s", err)
+	}
 
-	ioutil.WriteFile(path.Join(cacheHome, "s3parcp", "credentials-cache.json"), []byte("junk"), os.ModePerm)
+	err = ioutil.WriteFile(path.Join(cacheHome, "s3parcp", "credentials-cache.json"), []byte("junk"), os.ModePerm)
+	if err != nil {
+		t.Fatalf("error writing to cache file %s - %s", path.Join(cacheHome, "s3parcp", "credentials-cache.json"), err)
+	}
 
 	_, err = fileCacheProvider.Retrieve()
 	if creds.getCalls != 2 {
@@ -297,6 +303,7 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 	}
 
 	retrievalErrors := int32(0)
+	fileReadErrors := int32(0)
 	parsingErrors := int32(0)
 
 	// call retrieve with many threads
@@ -312,8 +319,10 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 
 			cachedCreds := cachedCredentials{}
 			bytes, err := ioutil.ReadFile(fileCacheProvider.cacheFilename())
-			err = json.Unmarshal(bytes, &cachedCreds)
 			if err != nil {
+				atomic.AddInt32(&fileReadErrors, 1)
+			}
+			if json.Unmarshal(bytes, &cachedCreds) != nil {
 				atomic.AddInt32(&parsingErrors, 1)
 			}
 		})()
@@ -327,10 +336,14 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 	}
 
 	if retrievalErrors > 0 {
-		t.Errorf("concurrent Retrieve calls errored %d times", retrievalErrors)
+		t.Errorf("concurrent Retrieve calls returned an error %d/100 times", retrievalErrors)
+	}
+
+	if fileReadErrors > 0 {
+		t.Errorf("concurrent Retrieve calls resulted in an unreadable cache file %d/100 times", fileReadErrors)
 	}
 
 	if parsingErrors > 0 {
-		t.Errorf("concurrent Retrieve calls resulted in a corrupted cache file %d times", parsingErrors)
+		t.Errorf("concurrent Retrieve calls resulted in a corrupted cache file %d/100 times", parsingErrors)
 	}
 }
