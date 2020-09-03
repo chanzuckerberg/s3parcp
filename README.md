@@ -64,6 +64,7 @@ RELEASES=chanzuckerberg/s3parcp/releases
 VERSION=$(curl https://api.github.com/repos/${RELEASES}/latest | jq -r .name | sed s/^v//)
 DOWNLOAD=s3parcp_${VERSION}_windows_amd64.tar.gz
 curl -L https://github.com/${RELEASES}/download/v${VERSION}/${DOWNLOAD} | tar zx
+```
 
 ## Usage
 
@@ -75,10 +76,12 @@ Application Options:
   -p, --part-size=                  Part size in bytes of parts to be downloaded
   -c, --concurrency=                Download concurrency
   -b, --buffer-size=                Size of download buffer in bytes
-      --checksum                    Compare checksum if downloading or place checksum in metadata if uploading
+      --checksum                    Compare checksum if downloading or place checksum
+                                    in metadata if uploading
   -r, --recursive                   Copy directories or folders recursively
       --version                     Print the current version
-      --s3_url=                     A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)
+      --s3_url=                     A custom s3 API url (also available as an environment
+                                    variable 'S3PARCP_S3_URL', the flag takes precedence)
       --max-retries=                Max per chunk retries (default: 3)
       --disable-ssl                 Disable SSL
       --disable-cached-credentials  Disable caching AWS credentials
