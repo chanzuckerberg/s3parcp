@@ -92,7 +92,8 @@ Help Options:
 
 Arguments:
   Source:                           Source to copy from
-  Destination:                      Destination to copy to (Optional, defaults to source's base name)
+  Destination:                      Destination to copy to (Optional, defaults to source's base
+                                    name)
 ```
 
 ### Examples
