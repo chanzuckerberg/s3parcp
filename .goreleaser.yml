@@ -48,9 +48,13 @@ nfpms:
     formats:
       - deb
       - rpm
-    files:
-      "completions/bash": "/etc/bash_completion.d/s3parcp"
-      "completions/zsh": "/usr/share/zsh/functions/Completion/_s3parcp"
+    contents:
+      - src: completions/bash
+        dst: /etc/bash_completion.d/crc-squared
+        type: config
+      - src: completions/zsh
+        dst: /usr/share/zsh/functions/Completion/_crc-squared
+        type: config
 
 checksum:
   name_template: "checksums.txt"
