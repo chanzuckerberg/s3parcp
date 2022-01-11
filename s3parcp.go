@@ -55,6 +55,7 @@ func main() {
 			session.Options{
 				Config: aws.Config{
 					EndpointResolver: endpoints.ResolverFunc(customDomainResolver),
+					S3ForcePathStyle: aws.Bool(true),
 				},
 				SharedConfigState: session.SharedConfigEnable,
 			},
