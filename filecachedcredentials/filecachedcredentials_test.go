@@ -1,6 +1,7 @@
 package filecachedcredentials
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -10,71 +11,56 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
 
 type credentialsMock struct {
-	credentialsValue credentials.Value
-	expiresAt        time.Time
-
-	expiresAtErr error
-	getCallsErr  error
-
-	expiresAtCalls int32
-	getCalls       int32
-	isExpiredCalls int32
+	credentialsValue aws.Credentials
+	retrieveCallsErr error
+	retrieveCalls    int32
 }
 
-func (c *credentialsMock) ExpiresAt() (time.Time, error) {
-	atomic.AddInt32(&(c.expiresAtCalls), 1)
-	return c.expiresAt, c.expiresAtErr
-}
-
-func (c *credentialsMock) Get() (credentials.Value, error) {
-	atomic.AddInt32(&(c.getCalls), 1)
-	return c.credentialsValue, c.getCallsErr
-}
-
-func (c *credentialsMock) IsExpired() bool {
-	atomic.AddInt32(&(c.isExpiredCalls), 1)
-	return c.expiresAt.Before(time.Now())
+func (c *credentialsMock) Retrieve(ctx context.Context) (aws.Credentials, error) {
+	atomic.AddInt32(&(c.retrieveCalls), 1)
+	return c.credentialsValue, c.retrieveCallsErr
 }
 
 func TestIsExpiredExpired(t *testing.T) {
 	c := credentialsMock{
-		expiresAt: time.Now(),
+		credentialsValue: aws.Credentials{Expires: time.Now()},
 	}
 
 	fileCacheProvider := FileCacheProvider{
 		credentials: &c,
 	}
-	isExpired := fileCacheProvider.IsExpired()
+	creds, err := fileCacheProvider.Retrieve(context.Background())
 
-	if isExpired != true {
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if creds.Expired() != true {
 		t.Error("expected fileCacheProvider.IsExpired to return true if the credential expiration timestamp is before now but it returned false")
 	}
 
-	if c.isExpiredCalls != 1 {
-		t.Errorf("expected fileCacheProvider.ExpiresAt to call Creds.ExpiresAt once but it was called %d times", c.expiresAtCalls)
-	}
 }
 
 func TestIsExpiredFresh(t *testing.T) {
 	c := credentialsMock{
-		expiresAt: time.Now().Add(1 * time.Minute),
+		credentialsValue: aws.Credentials{Expires: time.Now().Add(1 * time.Minute)},
 	}
 
 	fileCacheProvider := FileCacheProvider{
 		credentials: &c,
 	}
-	isExpired := fileCacheProvider.IsExpired()
+	creds, err := fileCacheProvider.Retrieve(context.Background())
 
-	if isExpired != false {
-		t.Error("expected fileCacheProvider.IsExpired to return false if the credential expiration timestamp is after now but it returned true")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if c.isExpiredCalls != 1 {
-		t.Errorf("expected fileCacheProvider.ExpiresAt to call Creds.ExpiresAt once but it was called %d times", c.expiresAtCalls)
+	if creds.Expired() != false {
+		t.Error("expected fileCacheProvider.IsExpired to return false if the credential expiration timestamp is after now but it returned true")
 	}
 }
 
@@ -102,13 +88,13 @@ func TestNewFileCachedCredentials(t *testing.T) {
 
 func TestRetreiveCachingFresh(t *testing.T) {
 	creds := credentialsMock{
-		credentialsValue: credentials.Value{
+		credentialsValue: aws.Credentials{
 			AccessKeyID:     "DummyAccessKeyID",
+			Expires:         time.Now().Add(1 * time.Minute),
 			SecretAccessKey: "DummySecretAccessKey",
 			SessionToken:    "DummySessionToken",
-			ProviderName:    "DummyProviderName",
+			Source:          "DummySource",
 		},
-		expiresAt: time.Now().Add(1 * time.Minute),
 	}
 
 	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
@@ -126,7 +112,7 @@ func TestRetreiveCachingFresh(t *testing.T) {
 		cacheHome:   cacheHome,
 	}
 
-	credResults, err := fileCacheProvider.Retrieve()
+	credResults, err := fileCacheProvider.Retrieve(context.Background())
 	if err != nil {
 		t.Fatalf("fileCacheProvider.Retrieve returned non nil error - %s", err)
 	}
@@ -146,13 +132,13 @@ func TestRetreiveCachingFresh(t *testing.T) {
 			credResults.SessionToken, creds.credentialsValue.SessionToken)
 	}
 
-	if credResults.ProviderName != creds.credentialsValue.ProviderName {
-		t.Errorf("fileCacheProvider.Retrieve should return credentials from the credentials API - expected ProviderName to be %s but it was %s",
-			credResults.ProviderName, creds.credentialsValue.ProviderName)
+	if credResults.Source != creds.credentialsValue.Source {
+		t.Errorf("fileCacheProvider.Retrieve should return credentials from the credentials API - expected Source to be %s but it was %s",
+			credResults.Source, creds.credentialsValue.Source)
 	}
 
-	if creds.getCalls != 1 {
-		t.Errorf("fileCacheProvider.Retrieve should call Get on the credentials API exactly once with no cache but it was called %d times", creds.getCalls)
+	if creds.retrieveCalls != 1 {
+		t.Errorf("fileCacheProvider.Retrieve should call Retrieve on the credentials API exactly once with no cache but it was called %d times", creds.retrieveCalls)
 	}
 
 	cacheHomeItems, err := ioutil.ReadDir(cacheHome)
@@ -189,13 +175,13 @@ func TestRetreiveCachingFresh(t *testing.T) {
 
 func TestRetreiveCachingCached(t *testing.T) {
 	creds := credentialsMock{
-		credentialsValue: credentials.Value{
+		credentialsValue: aws.Credentials{
 			AccessKeyID:     "DummyAccessKeyID",
+			Expires:         time.Now().Add(1 * time.Minute),
 			SecretAccessKey: "DummySecretAccessKey",
 			SessionToken:    "DummySessionToken",
-			ProviderName:    "DummyProviderName",
+			Source:          "DummySource",
 		},
-		expiresAt: time.Now().Add(1 * time.Minute),
 	}
 
 	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
@@ -213,17 +199,17 @@ func TestRetreiveCachingCached(t *testing.T) {
 		cacheHome:   cacheHome,
 	}
 
-	_, err = fileCacheProvider.Retrieve()
+	_, err = fileCacheProvider.Retrieve(context.Background())
 	if err != nil {
 		t.Fatalf("fileCacheProvider.Retrieve returned non nil error on first call - %s", err)
 	}
-	if creds.getCalls != 1 {
-		t.Errorf("fileCacheProvider.Retrieve should call Get on the credentials API exactly once with no cache but it was called %d times", creds.getCalls)
+	if creds.retrieveCalls != 1 {
+		t.Errorf("fileCacheProvider.Retrieve should call Retrieve on the credentials API exactly once with no cache but it was called %d times", creds.retrieveCalls)
 	}
 
-	_, err = fileCacheProvider.Retrieve()
-	if creds.getCalls != 1 {
-		t.Errorf("fileCacheProvider.Retrieve should call Get on the credentials API exactly once with no cache but it was called %d times", creds.getCalls)
+	_, err = fileCacheProvider.Retrieve(context.Background())
+	if creds.retrieveCalls != 1 {
+		t.Errorf("fileCacheProvider.Retrieve should call Retrieve on the credentials API exactly once with no cache but it was called %d times", creds.retrieveCalls)
 	}
 	if err != nil {
 		t.Errorf("fileCacheProvider.Retrieve returned non nil error on second call - %s", err)
@@ -232,13 +218,13 @@ func TestRetreiveCachingCached(t *testing.T) {
 
 func TestRetreiveCachingFileError(t *testing.T) {
 	creds := credentialsMock{
-		credentialsValue: credentials.Value{
+		credentialsValue: aws.Credentials{
 			AccessKeyID:     "DummyAccessKeyID",
+			Expires:         time.Now().Add(1 * time.Minute),
 			SecretAccessKey: "DummySecretAccessKey",
 			SessionToken:    "DummySessionToken",
-			ProviderName:    "DummyProviderName",
+			Source:          "DummySource",
 		},
-		expiresAt: time.Now().Add(1 * time.Minute),
 	}
 
 	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
@@ -256,7 +242,7 @@ func TestRetreiveCachingFileError(t *testing.T) {
 		cacheHome:   cacheHome,
 	}
 
-	_, err = fileCacheProvider.Retrieve()
+	_, err = fileCacheProvider.Retrieve(context.Background())
 	if err != nil {
 		t.Errorf("fileCacheProvider.Retrieve returned non nil error on first call - %s", err)
 	}
@@ -266,8 +252,8 @@ func TestRetreiveCachingFileError(t *testing.T) {
 		t.Fatalf("error writing to cache file %s - %s", path.Join(cacheHome, "s3parcp", "credentials-cache.json"), err)
 	}
 
-	_, err = fileCacheProvider.Retrieve()
-	if creds.getCalls != 2 {
+	_, err = fileCacheProvider.Retrieve(context.Background())
+	if creds.retrieveCalls != 2 {
 		t.Error("expected fileCacheProvider.Retrieve to refresh credentials if credentials file is invalid")
 	}
 	if err != nil {
@@ -277,14 +263,14 @@ func TestRetreiveCachingFileError(t *testing.T) {
 
 func TestRetreiveCachingThreadSafety(t *testing.T) {
 	creds := credentialsMock{
-		credentialsValue: credentials.Value{
-			AccessKeyID:     "DummyAccessKeyID",
+		credentialsValue: aws.Credentials{
+			AccessKeyID: "DummyAccessKeyID",
+			// set the credentials to always be expired, this will trigger a write to the cache with every call to Retrieve
+			Expires:         time.Now(),
 			SecretAccessKey: "DummySecretAccessKey",
 			SessionToken:    "DummySessionToken",
-			ProviderName:    "DummyProviderName",
+			Source:          "DummySource",
 		},
-		// set the credentials to always be expired, this will trigger a write to the cache with every call to Retrieve
-		expiresAt: time.Now(),
 	}
 
 	cacheHome, err := ioutil.TempDir("/tmp", "file-cache-provider-test-")
@@ -312,7 +298,7 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 		wg.Add(1)
 		go (func() {
 			defer wg.Done()
-			_, err := fileCacheProvider.Retrieve()
+			_, err := fileCacheProvider.Retrieve(context.Background())
 			if err != nil {
 				atomic.AddInt32(&retrievalErrors, 1)
 			}
@@ -331,8 +317,8 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 
 	// ensure that we fetched new credentials in each thread
 	// the count is updated atomically so this should always be true
-	if creds.getCalls != 100 {
-		t.Errorf("expected Get to be called 100 times but it was called %d times", creds.getCalls)
+	if creds.retrieveCalls != 100 {
+		t.Errorf("expected Retrieve to be called 100 times but it was called %d times", creds.retrieveCalls)
 	}
 
 	if retrievalErrors > 0 {

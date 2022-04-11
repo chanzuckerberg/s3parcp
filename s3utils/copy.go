@@ -1,16 +1,16 @@
 package s3utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/chanzuckerberg/crc-squared/crcsquared"
 	"github.com/chanzuckerberg/s3parcp/s3checksum"
 )
@@ -111,42 +111,28 @@ type CopierOptions struct {
 // Copier holds state for copying
 type Copier struct {
 	Options    CopierOptions
-	Client     *s3.S3
-	Downloader *s3manager.Downloader
-	Uploader   *s3manager.Uploader
+	Client     *s3.Client
+	Downloader *manager.Downloader
+	Uploader   *manager.Uploader
 }
 
 // NewCopier creates a new Copier
-func NewCopier(opts CopierOptions, sess *session.Session) Copier {
-
-	debugLogLevel := aws.LogDebugWithRequestRetries
-
-	config := aws.Config{
-		DisableSSL: &opts.DisableSSL,
-		MaxRetries: &opts.MaxRetries,
-	}
-
-	if opts.Verbose {
-		config.LogLevel = &debugLogLevel
-	}
-
-	client := s3.New(sess, &config)
-
-	downloader := s3manager.NewDownloader(sess, func(d *s3manager.Downloader) {
+func NewCopier(opts CopierOptions, client *s3.Client) Copier {
+	downloader := manager.NewDownloader(client, func(d *manager.Downloader) {
 		d.PartSize = opts.PartSize
 		d.Concurrency = opts.Concurrency
 		d.S3 = client
 		if opts.BufferSize > 0 {
-			d.BufferProvider = s3manager.NewPooledBufferedWriterReadFromProvider(opts.BufferSize)
+			d.BufferProvider = manager.NewPooledBufferedWriterReadFromProvider(opts.BufferSize)
 		}
 	})
 
-	uploader := s3manager.NewUploader(sess, func(d *s3manager.Uploader) {
+	uploader := manager.NewUploader(client, func(d *manager.Uploader) {
 		d.PartSize = opts.PartSize
 		d.Concurrency = opts.Concurrency
 		d.S3 = client
 		if opts.BufferSize > 0 {
-			d.BufferProvider = s3manager.NewBufferedReadSeekerWriteToPool(opts.BufferSize)
+			d.BufferProvider = manager.NewBufferedReadSeekerWriteToPool(opts.BufferSize)
 		}
 	})
 
@@ -163,20 +149,21 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	var headObjectResponse *s3.HeadObjectOutput
 	if c.Options.Checksum {
 		headObjectInput := s3.HeadObjectInput{
-			Bucket: aws.String(bucket),
-			Key:    aws.String(key),
+			Bucket: &bucket,
+			Key:    &key,
 		}
 
 		var err error
-		headObjectResponse, err = c.Client.HeadObject(&headObjectInput)
+		headObjectResponse, err = c.Client.HeadObject(context.Background(), &headObjectInput)
 		if err != nil {
 			return err
 		}
 	}
 
 	getObjectInput := s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+		Bucket:       &bucket,
+		Key:          &key,
+		ChecksumMode: types.ChecksumMode(types.ChecksumAlgorithmSha256),
 	}
 
 	err := os.MkdirAll(path.Dir(dest), os.ModePerm)
@@ -190,7 +177,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	}
 	defer file.Close()
 
-	_, err = c.Downloader.Download(file, &getObjectInput)
+	_, err = c.Downloader.Download(context.Background(), file, &getObjectInput)
 	if err != nil {
 		return err
 	}
@@ -220,9 +207,9 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 }
 
 func (c *Copier) upload(src string, bucket string, key string) error {
-	uploadInput := s3manager.UploadInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+	uploadInput := s3.PutObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
 	}
 
 	// Only compute checksum if it is necessary
@@ -245,7 +232,7 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 	defer file.Close()
 
 	uploadInput.Body = file
-	_, err = c.Uploader.Upload(&uploadInput)
+	_, err = c.Uploader.Upload(context.Background(), &uploadInput)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package filecachedcredentials
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -8,29 +9,21 @@ import (
 	"path"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
 )
-
-// awsCredentials is an interface with the required functions from credentials.credentials.
-// An interface version is required for mocking
-type awsCredentials interface {
-	ExpiresAt() (time.Time, error)
-	Get() (credentials.Value, error)
-	IsExpired() bool
-}
 
 // FileCacheProvider provides credentials from a file cache with a fallback
 type FileCacheProvider struct {
-	credentials awsCredentials
+	credentials aws.CredentialsProvider
 	cacheHome   string
 }
 
 type cachedCredentials struct {
 	AccessKeyID     string
 	ExpiresAt       time.Time
-	ProviderName    string
 	SecretAccessKey string
 	SessionToken    string
+	Source          string
 }
 
 func (c cachedCredentials) IsExpired() bool {
@@ -97,26 +90,19 @@ func (f *FileCacheProvider) loadCachedCredentials() (cachedCredentials, error) {
 	return cachedCreds, nil
 }
 
-func (f *FileCacheProvider) refreshCredentials() (credentials.Value, error) {
-	newCredentials, err := f.credentials.Get()
+func (f *FileCacheProvider) refreshCredentials(ctx context.Context) (aws.Credentials, error) {
+	newCredentials, err := f.credentials.Retrieve(ctx)
 	if err != nil {
 		log.Printf("error while fetching credentials - %s\n", err)
-		return credentials.Value{}, err
-	}
-
-	expiresAt, err := f.credentials.ExpiresAt()
-
-	if err != nil {
-		log.Printf("error fetching credential expiry - %s, credentials will not be cached\n", err)
-		return newCredentials, nil
+		return aws.Credentials{}, err
 	}
 
 	cachedCreds := cachedCredentials{
 		AccessKeyID:     newCredentials.AccessKeyID,
-		ExpiresAt:       expiresAt,
-		ProviderName:    newCredentials.ProviderName,
+		ExpiresAt:       newCredentials.Expires,
 		SecretAccessKey: newCredentials.SecretAccessKey,
 		SessionToken:    newCredentials.SessionToken,
+		Source:          newCredentials.Source,
 	}
 
 	err = f.saveCachedCredentials(cachedCreds)
@@ -128,7 +114,7 @@ func (f *FileCacheProvider) refreshCredentials() (credentials.Value, error) {
 }
 
 // NewFileCacheProvider creates a new FileCacheProvider with the os.UserCacheDir as the cacheHome
-func NewFileCacheProvider(credentials awsCredentials) (FileCacheProvider, error) {
+func NewFileCacheProvider(credentials aws.CredentialsProvider) (FileCacheProvider, error) {
 	cacheHome, err := os.UserCacheDir()
 	if err != nil {
 		log.Printf("error getting user cache directory - %s\n", err)
@@ -141,10 +127,10 @@ func NewFileCacheProvider(credentials awsCredentials) (FileCacheProvider, error)
 }
 
 // Retrieve retrieves credentials
-func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
+func (f *FileCacheProvider) Retrieve(ctx context.Context) (aws.Credentials, error) {
 	err := os.MkdirAll(f.cacheDirname(), os.ModePerm)
 	if err != nil {
-		return credentials.Value{}, err
+		return aws.Credentials{}, err
 	}
 
 	cacheFileExists, err := fileExists(f.cacheFilename())
@@ -152,7 +138,7 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 		log.Printf("error while checking for existence of cached credentials file %s - %s, refreshing credentials\n", f.cacheFilename(), err)
 	}
 	if err != nil || !cacheFileExists {
-		return f.refreshCredentials()
+		return f.refreshCredentials(ctx)
 	}
 
 	cachedCreds, err := f.loadCachedCredentials()
@@ -160,18 +146,13 @@ func (f *FileCacheProvider) Retrieve() (credentials.Value, error) {
 		log.Println("error loading cached credentials, refreshing credentials")
 	}
 	if err == nil && !cachedCreds.IsExpired() {
-		return credentials.Value{
+		return aws.Credentials{
 			AccessKeyID:     cachedCreds.AccessKeyID,
-			ProviderName:    cachedCreds.ProviderName,
 			SecretAccessKey: cachedCreds.SecretAccessKey,
 			SessionToken:    cachedCreds.SessionToken,
+			Source:          cachedCreds.Source,
 		}, err
 	}
 
-	return f.refreshCredentials()
-}
-
-// IsExpired checks if the credentials are expired
-func (f *FileCacheProvider) IsExpired() bool {
-	return f.credentials.IsExpired()
+	return f.refreshCredentials(ctx)
 }

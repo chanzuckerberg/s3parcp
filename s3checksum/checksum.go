@@ -8,8 +8,7 @@ import (
 
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // Crc32cChecksumMetadataName is the name of the metadata field to store the crc32c checksum
@@ -24,7 +23,7 @@ func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
 		return 0, errors.New("object has no crc32c checksum set")
 	}
 
-	crc32cChecksumString := *headObjectOutput.Metadata[Crc32cChecksumMetadataName]
+	crc32cChecksumString := headObjectOutput.Metadata[Crc32cChecksumMetadataName]
 
 	if crc32cChecksumString == "" {
 		return 0, errors.New("object has no crc32c checksum set")
@@ -40,15 +39,15 @@ func GetCRC32CChecksum(headObjectOutput *s3.HeadObjectOutput) (uint32, error) {
 
 // SetCRC32CChecksum sets the crc32c checksum on an s3manager.UploadInput
 func SetCRC32CChecksum(
-	uploadInput s3manager.UploadInput,
+	uploadInput s3.PutObjectInput,
 	crc32cChecksum uint32,
-) s3manager.UploadInput {
+) s3.PutObjectInput {
 	crc32cChecksumString := fmt.Sprintf("%X", crc32cChecksum)
 	metadata := uploadInput.Metadata
 	if metadata == nil {
-		metadata = make(map[string]*string)
+		metadata = make(map[string]string)
 	}
-	metadata[Crc32cChecksumMetadataName] = &crc32cChecksumString
+	metadata[Crc32cChecksumMetadataName] = crc32cChecksumString
 	uploadInput.Metadata = metadata
 	return uploadInput
 }

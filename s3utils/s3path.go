@@ -1,18 +1,19 @@
 package s3utils
 
 import (
+	"context"
+	"errors"
 	"path"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type s3Path struct {
 	bucket string
 	prefix string
 	raw    string
-	client *s3.S3
+	client *s3.Client
 }
 
 // IsDir Checks if a s3Path is a directory
@@ -32,13 +33,13 @@ func (p s3Path) IsDir() (bool, error) {
 	prefix := addTrailingSlash(p.prefix)
 
 	// Only one key is required for the check
-	var maxKeys int64 = 1
+	var maxKeys int32 = 1
 	request := s3.ListObjectsV2Input{
-		Bucket:  aws.String(p.bucket),
-		Prefix:  aws.String(prefix),
-		MaxKeys: &maxKeys,
+		Bucket:  &p.bucket,
+		Prefix:  &prefix,
+		MaxKeys: maxKeys,
 	}
-	res, err := p.client.ListObjectsV2(&request)
+	res, err := p.client.ListObjectsV2(context.Background(), &request)
 	if err != nil {
 		return false, err
 	}
@@ -58,12 +59,13 @@ func (p s3Path) Exists() (bool, error) {
 		return true, nil
 	}
 
-	_, err := p.client.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(p.bucket),
-		Key:    aws.String(p.prefix),
+	_, err := p.client.HeadObject(context.Background(), &s3.HeadObjectInput{
+		Bucket: &p.bucket,
+		Key:    &p.prefix,
 	})
 
-	if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NotFound" {
+	var notFound *types.NotFound
+	if err != nil && errors.As(err, &notFound) {
 		return false, nil
 	}
 
@@ -92,9 +94,9 @@ func (p s3Path) FileOrObject() string {
 
 // ListPathsWithPrefix lists all paths with the s3Path as a prefix
 func (p s3Path) ListPathsWithPrefix() ([]Path, error) {
-	res, err := p.client.ListObjectsV2(&s3.ListObjectsV2Input{
-		Bucket: aws.String(p.bucket),
-		Prefix: aws.String(p.prefix),
+	res, err := p.client.ListObjectsV2(context.Background(), &s3.ListObjectsV2Input{
+		Bucket: &p.bucket,
+		Prefix: &p.prefix,
 	})
 
 	if err != nil {
