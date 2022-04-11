@@ -25,45 +25,6 @@ func (c *credentialsMock) Retrieve(ctx context.Context) (aws.Credentials, error)
 	return c.credentialsValue, c.retrieveCallsErr
 }
 
-func TestIsExpiredExpired(t *testing.T) {
-	c := credentialsMock{
-		credentialsValue: aws.Credentials{Expires: time.Now()},
-	}
-
-	fileCacheProvider := FileCacheProvider{
-		credentials: &c,
-	}
-	creds, err := fileCacheProvider.Retrieve(context.Background())
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if creds.Expired() != true {
-		t.Error("expected fileCacheProvider.IsExpired to return true if the credential expiration timestamp is before now but it returned false")
-	}
-
-}
-
-func TestIsExpiredFresh(t *testing.T) {
-	c := credentialsMock{
-		credentialsValue: aws.Credentials{Expires: time.Now().Add(1 * time.Minute)},
-	}
-
-	fileCacheProvider := FileCacheProvider{
-		credentials: &c,
-	}
-	creds, err := fileCacheProvider.Retrieve(context.Background())
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if creds.Expired() != false {
-		t.Error("expected fileCacheProvider.IsExpired to return false if the credential expiration timestamp is after now but it returned true")
-	}
-}
-
 func TestNewFileCachedCredentials(t *testing.T) {
 	creds := credentialsMock{}
 	fileCacheProvider, fileCacheProviderErr := NewFileCacheProvider(&creds)
