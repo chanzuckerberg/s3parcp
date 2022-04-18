@@ -9,5 +9,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.5
 	github.com/jessevdk/go-flags v1.5.0
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 )
