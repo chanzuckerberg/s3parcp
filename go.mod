@@ -7,8 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.15.3
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.5
-	github.com/chanzuckerberg/crc-squared v0.2.0
 	github.com/jessevdk/go-flags v1.5.0
-	golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd // indirect
 	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )

@@ -11,8 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/chanzuckerberg/crc-squared/crcsquared"
-	"github.com/chanzuckerberg/s3parcp/s3checksum"
 )
 
 // CopyJob defines a file/object copy
@@ -145,25 +143,13 @@ func NewCopier(opts CopierOptions, client *s3.Client) Copier {
 }
 
 func (c *Copier) download(bucket string, key string, dest string) error {
-	// Only get object info if checksum is enabled
-	var headObjectResponse *s3.HeadObjectOutput
-	if c.Options.Checksum {
-		headObjectInput := s3.HeadObjectInput{
-			Bucket: &bucket,
-			Key:    &key,
-		}
-
-		var err error
-		headObjectResponse, err = c.Client.HeadObject(context.Background(), &headObjectInput)
-		if err != nil {
-			return err
-		}
+	getObjectInput := s3.GetObjectInput{
+		Bucket: &bucket,
+		Key:    &key,
 	}
 
-	getObjectInput := s3.GetObjectInput{
-		Bucket:       &bucket,
-		Key:          &key,
-		ChecksumMode: types.ChecksumModeEnabled,
+	if c.Options.Checksum {
+		getObjectInput.ChecksumMode = types.ChecksumModeEnabled
 	}
 
 	err := os.MkdirAll(path.Dir(dest), os.ModePerm)
@@ -199,27 +185,6 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 		return err
 	}
 
-	if c.Options.Checksum {
-		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
-			Concurrency: c.Options.Concurrency,
-			PartSize:    c.Options.PartSize,
-		}
-		expectedChecksum, err := s3checksum.GetCRC32CChecksum(headObjectResponse)
-		if err != nil {
-			s3Path := bucketAndKeyToS3Path(bucket, key)
-			return fmt.Errorf("while getting checksum from object: %s metadata encountered error: %s", s3Path, err)
-		}
-
-		checksum, err := crcsquared.ParallelCRC32CChecksumFile(dest, parallelChecksumFileOptions)
-		if err != nil {
-			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", dest, err)
-		}
-
-		if expectedChecksum != checksum {
-			return fmt.Errorf("checksum did not match for file: %s", dest)
-		}
-	}
-
 	return nil
 }
 
@@ -229,17 +194,8 @@ func (c *Copier) upload(src string, bucket string, key string) error {
 		Key:    &key,
 	}
 
-	// Only compute checksum if it is necessary
 	if c.Options.Checksum {
-		parallelChecksumFileOptions := crcsquared.ParallelChecksumFileOptions{
-			Concurrency: c.Options.Concurrency,
-			PartSize:    c.Options.PartSize,
-		}
-		crc32cChecksum, err := crcsquared.ParallelCRC32CChecksumFile(src, parallelChecksumFileOptions)
-		if err != nil {
-			return fmt.Errorf("while computing checksum for file: %s encountered error: %s", src, err)
-		}
-		uploadInput = s3checksum.SetCRC32CChecksum(uploadInput, crc32cChecksum)
+		uploadInput.ChecksumAlgorithm = types.ChecksumAlgorithmCrc32c
 	}
 
 	file, err := os.Open(src)
