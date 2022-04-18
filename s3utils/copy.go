@@ -163,7 +163,7 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	getObjectInput := s3.GetObjectInput{
 		Bucket:       &bucket,
 		Key:          &key,
-		ChecksumMode: types.ChecksumMode(types.ChecksumAlgorithmSha256),
+		ChecksumMode: types.ChecksumModeEnabled,
 	}
 
 	err := os.MkdirAll(path.Dir(dest), os.ModePerm)
@@ -177,7 +177,24 @@ func (c *Copier) download(bucket string, key string, dest string) error {
 	}
 	defer file.Close()
 
-	_, err = c.Downloader.Download(context.Background(), file, &getObjectInput)
+	partSizeResp, err := c.Client.GetObjectAttributes(context.Background(), &s3.GetObjectAttributesInput{
+		Bucket:           &bucket,
+		Key:              &key,
+		ObjectAttributes: []types.ObjectAttributes{types.ObjectAttributesObjectParts},
+		MaxParts:         1,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = c.Downloader.Download(context.Background(), file, &getObjectInput, func(d *manager.Downloader) {
+		if objectParts := partSizeResp.ObjectParts; objectParts != nil {
+			parts := objectParts.Parts
+			if len(parts) > 0 {
+				d.PartSize = parts[0].Size
+			}
+		}
+	})
 	if err != nil {
 		return err
 	}
