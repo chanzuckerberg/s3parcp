@@ -12,18 +12,18 @@ import (
 
 // Options - the options passed to the executable
 type Options struct {
-	PartSize                 int64  `short:"p" long:"part-size" description:"Part size in bytes of parts to be downloaded"`
-	Concurrency              int    `short:"c" long:"concurrency" description:"Download concurrency"`
-	BufferSize               int    `short:"b" long:"buffer-size" description:"Size of download buffer in bytes"`
-	Checksum                 bool   `long:"checksum" description:"Compare checksum if downloading or place checksum in metadata if uploading"`
-	Recursive                bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
-	Version                  bool   `long:"version" description:"Print the current version"`
-	S3Url                    string `long:"s3_url" description:"A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)"`
-	MaxRetries               int    `long:"max-retries" description:"Max per chunk retries" default:"3"`
-	DisableSSL               bool   `long:"disable-ssl" description:"Disable SSL"`
-	DisableCachedCredentials bool   `long:"disable-cached-credentials" description:"Disable caching AWS credentials"`
-	Verbose                  bool   `short:"v" long:"verbose" description:"verbose logging"`
-	Positional               struct {
+	PartSize              int64  `short:"p" long:"part-size" description:"Part size in bytes of parts to be downloaded"`
+	Concurrency           int    `short:"c" long:"concurrency" description:"Download concurrency"`
+	BufferSize            int    `short:"b" long:"buffer-size" description:"Size of download buffer in bytes"`
+	Checksum              bool   `long:"checksum" description:"Compare checksum if downloading or place checksum in metadata if uploading"`
+	Recursive             bool   `short:"r" long:"recursive" description:"Copy directories or folders recursively"`
+	Version               bool   `long:"version" description:"Print the current version"`
+	S3Url                 string `long:"s3_url" description:"A custom s3 API url (also available as an environment variable 'S3PARCP_S3_URL', the flag takes precedence)"`
+	MaxRetries            int    `long:"max-retries" description:"Max per chunk retries" default:"3"`
+	DisableSSL            bool   `long:"disable-ssl" description:"Disable SSL"`
+	FileCachedCredentials bool   `long:"file-cached-credentials" description:"Cache AWS credentials to the file system"`
+	Verbose               bool   `short:"v" long:"verbose" description:"verbose logging"`
+	Positional            struct {
 		Source      flags.Filename `description:"Source to copy from"`
 		Destination flags.Filename `description:"Destination to copy to (Optional, defaults to source's base name)"`
 	} `positional-args:"yes"`

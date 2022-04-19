@@ -65,10 +65,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if !opts.DisableCachedCredentials {
+	if opts.FileCachedCredentials {
 		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
 		if err != nil {
-			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
+			log.Fatal("error setting up cached credentials\n")
 		}
 
 		cfg.Credentials = &fileCacheProvider
