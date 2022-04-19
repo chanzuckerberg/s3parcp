@@ -264,23 +264,17 @@ func TestRetreiveCachingThreadSafety(t *testing.T) {
 				atomic.AddInt32(&retrievalErrors, 1)
 			}
 
-			cachedCreds := cachedCredentials{}
+			creds := aws.Credentials{}
 			bytes, err := ioutil.ReadFile(fileCacheProvider.cacheFilename())
 			if err != nil {
 				atomic.AddInt32(&fileReadErrors, 1)
 			}
-			if json.Unmarshal(bytes, &cachedCreds) != nil {
+			if json.Unmarshal(bytes, &creds) != nil {
 				atomic.AddInt32(&parsingErrors, 1)
 			}
 		})()
 	}
 	wg.Wait()
-
-	// ensure that we fetched new credentials in each thread
-	// the count is updated atomically so this should always be true
-	if creds.retrieveCalls != 100 {
-		t.Errorf("expected Retrieve to be called 100 times but it was called %d times", creds.retrieveCalls)
-	}
 
 	if retrievalErrors > 0 {
 		t.Errorf("concurrent Retrieve calls returned an error %d/100 times", retrievalErrors)

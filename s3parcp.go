@@ -59,24 +59,23 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	if !opts.DisableCachedCredentials {
-		cfg, err := config.LoadDefaultConfig(context.Background(), configFuncs...)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
-		if err != nil {
-			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
-		}
-
-		configFuncs = append(configFuncs, config.WithCredentialsProvider(&fileCacheProvider))
-	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), configFuncs...)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if !opts.DisableCachedCredentials {
+		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
+		if err != nil {
+			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
+		}
+
+		cfg.Credentials = &fileCacheProvider
+	}
+
+	provider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
+	cfg.Credentials = &provider
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		if opts.S3Url != "" {

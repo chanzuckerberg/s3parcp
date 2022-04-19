@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 )
@@ -16,18 +15,6 @@ import (
 type FileCacheProvider struct {
 	credentials aws.CredentialsProvider
 	cacheHome   string
-}
-
-type cachedCredentials struct {
-	AccessKeyID     string
-	ExpiresAt       time.Time
-	SecretAccessKey string
-	SessionToken    string
-	Source          string
-}
-
-func (c cachedCredentials) IsExpired() bool {
-	return c.ExpiresAt.Before(time.Now())
 }
 
 func fileExists(name string) (bool, error) {
@@ -46,13 +33,13 @@ func (f *FileCacheProvider) cacheDirname() string {
 	return path.Join(f.cacheHome, "s3parcp")
 }
 
-// saveCachedCredentials writes cachedCredentials to a file atomically.
+// saveCredentials writes aws.Credentials to a file atomically.
 // To make it atomic the data is written to a temporary file then that file is renamed to
 // the name of the cache file. This prevents the cache file from being corrupted.
-func (f *FileCacheProvider) saveCachedCredentials(cachedCreds cachedCredentials) error {
-	data, err := json.Marshal(cachedCreds)
+func (f *FileCacheProvider) saveCredentials(creds aws.Credentials) error {
+	data, err := json.Marshal(creds)
 	if err != nil {
-		log.Printf("error marshaling cached credentials json %s - %s\n", cachedCreds, err)
+		log.Printf("error marshaling cached credentials json - %s\n", err)
 		return err
 	}
 
@@ -75,42 +62,34 @@ func (f *FileCacheProvider) saveCachedCredentials(cachedCreds cachedCredentials)
 	return err
 }
 
-func (f *FileCacheProvider) loadCachedCredentials() (cachedCredentials, error) {
-	cachedCreds := cachedCredentials{}
+func (f *FileCacheProvider) loadCachedCredentials() (aws.Credentials, error) {
+	creds := aws.Credentials{}
 	bytes, err := ioutil.ReadFile(f.cacheFilename())
 	if err != nil {
 		log.Printf("error while reading cached credentials file %s - %s\n", f.cacheFilename(), err)
-		return cachedCreds, err
+		return creds, err
 	}
-	err = json.Unmarshal(bytes, &cachedCreds)
+	err = json.Unmarshal(bytes, &creds)
 	if err != nil {
 		log.Printf("error parsing cached credentials file %s - %s\n", f.cacheFilename(), err)
-		return cachedCreds, err
+		return creds, err
 	}
-	return cachedCreds, nil
+	return creds, nil
 }
 
 func (f *FileCacheProvider) refreshCredentials(ctx context.Context) (aws.Credentials, error) {
-	newCredentials, err := f.credentials.Retrieve(ctx)
+	creds, err := f.credentials.Retrieve(ctx)
 	if err != nil {
 		log.Printf("error while fetching credentials - %s\n", err)
 		return aws.Credentials{}, err
 	}
 
-	cachedCreds := cachedCredentials{
-		AccessKeyID:     newCredentials.AccessKeyID,
-		ExpiresAt:       newCredentials.Expires,
-		SecretAccessKey: newCredentials.SecretAccessKey,
-		SessionToken:    newCredentials.SessionToken,
-		Source:          newCredentials.Source,
-	}
-
-	err = f.saveCachedCredentials(cachedCreds)
+	err = f.saveCredentials(creds)
 	if err != nil {
 		log.Println("error saving credentials, credentials will not be cached")
 	}
 
-	return newCredentials, nil
+	return creds, nil
 }
 
 // NewFileCacheProvider creates a new FileCacheProvider with the os.UserCacheDir as the cacheHome
@@ -145,7 +124,7 @@ func (f *FileCacheProvider) Retrieve(ctx context.Context) (aws.Credentials, erro
 	if err != nil {
 		log.Println("error loading cached credentials, refreshing credentials")
 	}
-	if err == nil && !cachedCreds.IsExpired() {
+	if err == nil && !cachedCreds.Expired() {
 		return aws.Credentials{
 			AccessKeyID:     cachedCreds.AccessKeyID,
 			SecretAccessKey: cachedCreds.SecretAccessKey,
