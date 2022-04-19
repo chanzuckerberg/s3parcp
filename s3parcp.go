@@ -74,9 +74,6 @@ func main() {
 		cfg.Credentials = &fileCacheProvider
 	}
 
-	provider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
-	cfg.Credentials = &provider
-
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		if opts.S3Url != "" {
 			o.UsePathStyle = true
