@@ -1,16 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/chanzuckerberg/s3parcp/filecachedcredentials"
 	"github.com/chanzuckerberg/s3parcp/options"
 	"github.com/chanzuckerberg/s3parcp/s3utils"
@@ -34,43 +33,52 @@ func main() {
 		return
 	}
 
-	sess := session.Must(session.NewSessionWithOptions(
-		session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		},
-	))
+	configFuncs := make([]func(*config.LoadOptions) error, 0)
+
+	if opts.MaxRetries != 0 {
+		configFuncs = append(configFuncs, config.WithRetryMaxAttempts(opts.MaxRetries))
+	}
+
+	if opts.Verbose {
+		configFuncs = append(configFuncs, config.WithClientLogMode(aws.LogRetries|aws.LogRequest))
+	}
 
 	if opts.S3Url != "" {
-		customDomainResolver := func(service, region string, optFns ...func(*endpoints.Options)) (endpoints.ResolvedEndpoint, error) {
-			if service == endpoints.S3ServiceID {
-				return endpoints.ResolvedEndpoint{
+		customDomainResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			if service == s3.ServiceID {
+				return aws.Endpoint{
 					URL: opts.S3Url,
 				}, nil
 			}
 
-			return endpoints.DefaultResolver().EndpointFor(service, region, optFns...)
-		}
+			return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+		})
 
-		sess = session.Must(session.NewSessionWithOptions(
-			session.Options{
-				Config: aws.Config{
-					EndpointResolver: endpoints.ResolverFunc(customDomainResolver),
-					S3ForcePathStyle: aws.Bool(true),
-				},
-				SharedConfigState: session.SharedConfigEnable,
-			},
-		))
-	}
-	if !opts.DisableCachedCredentials {
-		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(sess.Config.Credentials)
+		configFuncs = append(configFuncs, config.WithEndpointResolverWithOptions(customDomainResolver))
 		if err != nil {
-			log.Fatal("error setting up cached credentials, try running with --disable-cached-credentials\n")
+			log.Fatal(err)
 		}
-
-		sess.Config.Credentials = credentials.NewCredentials(&fileCacheProvider)
 	}
 
-	client := s3.New(sess)
+	cfg, err := config.LoadDefaultConfig(context.Background(), configFuncs...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if opts.FileCachedCredentials {
+		fileCacheProvider, err := filecachedcredentials.NewFileCacheProvider(cfg.Credentials)
+		if err != nil {
+			log.Fatal("error setting up cached credentials\n")
+		}
+
+		cfg.Credentials = &fileCacheProvider
+	}
+
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if opts.S3Url != "" {
+			o.UsePathStyle = true
+		}
+	})
 
 	sourcePath, err := s3utils.NewPath(client, string(opts.Positional.Source))
 	if err != nil {
@@ -93,7 +101,7 @@ func main() {
 		PartSize:    opts.PartSize,
 		Verbose:     opts.Verbose,
 	}
-	copier := s3utils.NewCopier(copierOpts, sess)
+	copier := s3utils.NewCopier(copierOpts, client)
 	jobs, err := s3utils.GetCopyJobs(sourcePath, destPath, opts.Recursive)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "AccessDenied") {

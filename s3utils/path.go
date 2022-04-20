@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // Path is an interface of functions to apply transparently to s3 or local paths
@@ -61,7 +61,7 @@ func addTrailingSlash(path string) string {
 }
 
 // NewPath creates a Path from a raw string
-func NewPath(client *s3.S3, raw string) (Path, error) {
+func NewPath(client *s3.Client, raw string) (Path, error) {
 	if isS3Path(raw) {
 		bucket, key, err := s3PathToBucketAndKey(raw)
 		if err != nil {

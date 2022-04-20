@@ -6,12 +6,12 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type localPath struct {
 	raw    string
-	client *s3.S3
+	client *s3.Client
 }
 
 // IsDir Checks if a localPath is a directory
