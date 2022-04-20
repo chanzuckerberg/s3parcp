@@ -246,7 +246,7 @@ func (c *Copier) localCopy(src string, dest string) error {
 // Copy executes a copy job
 func (c *Copier) Copy(copyJob CopyJob) error {
 	if copyJob.source.IsS3() && copyJob.destination.IsS3() {
-		return errors.New("Copying between s3 is not yet supported")
+		return errors.New("copying between s3 is not yet supported")
 	} else if !copyJob.source.IsS3() && copyJob.destination.IsS3() {
 		bucket, err := copyJob.destination.Bucket()
 		if err != nil {

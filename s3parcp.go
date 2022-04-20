@@ -55,9 +55,6 @@ func main() {
 		})
 
 		configFuncs = append(configFuncs, config.WithEndpointResolverWithOptions(customDomainResolver))
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
 
 	cfg, err := config.LoadDefaultConfig(context.Background(), configFuncs...)
