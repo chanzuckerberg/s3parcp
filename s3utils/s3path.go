@@ -5,8 +5,8 @@ import (
 	"errors"
 	"path"
 
+	"github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 type s3Path struct {
@@ -64,8 +64,8 @@ func (p s3Path) Exists() (bool, error) {
 		Key:    &p.prefix,
 	})
 
-	var notFound *types.NotFound
-	if err != nil && errors.As(err, &notFound) {
+	var notFound *http.ResponseError
+	if err != nil && errors.As(err, &notFound) && notFound.HTTPStatusCode() == 404 {
 		return false, nil
 	}
 
